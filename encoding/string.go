@@ -33,30 +33,19 @@ func (st *String) Encode(w io.Writer) error {
 // WriteString writes a VarInt prefixed utf-8 string to the
 // writer.
 func WriteString(w io.Writer, str String) error {
-
-	// Creating buffer from string
 	b := []byte(str)
-
-	// Writing string length as varint to output buffer
 	err := WriteVarInt(w, VarInt(len(b)))
-
 	if err != nil {
 		return err
 	}
-
-	// Writing string to buffer
 	_, err = w.Write(b)
-
 	return err
 }
 
 // ReadString reads a VarInt prefixed utf-8 string to the
 // reader. It uses io.ReadFull to ensure all bytes are read.
 func ReadString(r io.Reader) (String, error) {
-
-	// Reading string size encoded as VarInt
 	l, err := ReadVarInt(r)
-
 	if err != nil {
 		return "", nil
 	}
@@ -66,11 +55,7 @@ func ReadString(r io.Reader) (String, error) {
 		return "", ErrStringLengthTooLarge
 	}
 
-	// Creating string buffer with the specified size
 	stringBuff := make([]byte, int(l))
-
-	// Reading l amount of bytes from the buffer
 	_, err = io.ReadFull(r, stringBuff)
-
 	return String(stringBuff), err
 }

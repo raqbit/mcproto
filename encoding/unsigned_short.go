@@ -28,10 +28,9 @@ func WriteUnsignedShort(buff io.Writer, value UnsignedShort) error {
 	return binary.Write(buff, binary.BigEndian, uint16(value))
 }
 
-//ReadUnsignedShort reads an UnsignedShort from the reader
+// ReadUnsignedShort reads an UnsignedShort from the reader
 func ReadUnsignedShort(buff io.Reader) (UnsignedShort, error) {
 	var short uint16
 	err := binary.Read(buff, binary.BigEndian, &short)
 	return UnsignedShort(short), err
 }
-
