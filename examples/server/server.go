@@ -32,11 +32,14 @@ func main() {
 		// spawn off goroutine to able to accept new connections
 		go handleConnection(conn)
 	}
-
 }
+
+// TODO: timeouts
+// TODO: clean shutdown
 
 func handleConnection(tcpConn net.Conn) {
 	conn := mcproto.NewConnection(tcpConn, mcproto.ServerSide)
+	defer conn.Close()
 
 	for {
 		p, err := conn.ReadPacket()
@@ -44,11 +47,10 @@ func handleConnection(tcpConn net.Conn) {
 		if err != nil {
 			if errors.Unwrap(err) == io.EOF {
 				log.Println("Client closed the connection")
-				_ = conn.Close()
 				return
 			}
+
 			log.Printf("Invalid packet: %s", err)
-			_ = conn.Close()
 			return
 		}
 
@@ -56,7 +58,6 @@ func handleConnection(tcpConn net.Conn) {
 
 		if err != nil {
 			log.Printf("Closing connection: %s\n", err)
-			_ = conn.Close()
 			return
 		}
 	}
@@ -70,27 +71,27 @@ func handlePacket(conn *mcproto.Connection, p mcproto.Packet) error {
 		return handleRequestPacket(conn, v)
 	case *mcproto.PingPacket:
 		return handlePingPacket(conn, v)
-	case *mcproto.LoginPacket:
+	case *mcproto.LoginStartPacket:
 		return handleLoginPacket(conn, v)
 	default:
 		return fmt.Errorf("unhandled packet: %s", p)
 	}
 }
 
-func handleLoginPacket(conn *mcproto.Connection, v *mcproto.LoginPacket) error {
+func handleLoginPacket(conn *mcproto.Connection, v *mcproto.LoginStartPacket) error {
 	conn.State = mcproto.PlayState
 	return conn.WritePacket(mcproto.LoginSuccessPacket{UUID: "f2bf38cd-0073-4703-94fa-d49d406a4885", Username: v.Name})
 }
 
 func handlePingPacket(conn *mcproto.Connection, v *mcproto.PingPacket) error {
-	return conn.WritePacket(&mcproto.PongPacket{Payload: v.Payload})
+	return conn.WritePacket(mcproto.PongPacket{Payload: v.Payload})
 }
 
 func handleRequestPacket(conn *mcproto.Connection, _ *mcproto.RequestPacket) error {
 	status := &mcproto.ServerInfo{
 		Version: mcproto.Version{
 			Name:     "raqbit-custom",
-			Protocol: 1,
+			Protocol: ProtocolVersion,
 		},
 		Players: mcproto.Players{
 			Max:    9001,
@@ -109,7 +110,7 @@ func handleRequestPacket(conn *mcproto.Connection, _ *mcproto.RequestPacket) err
 		return fmt.Errorf("could not marshal server info: %w", err)
 	}
 
-	err = conn.WritePacket(&mcproto.ResponsePacket{
+	err = conn.WritePacket(mcproto.ResponsePacket{
 		Json: enc.String(jsonStatus),
 	})
 

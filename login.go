@@ -3,32 +3,38 @@ package mcproto
 import (
 	"bytes"
 	enc "github.com/Raqbit/mcproto/encoding"
+	"io"
 )
 
-type LoginPacket struct {
+// https://wiki.vg/Protocol#Login_Start
+type LoginStartPacket struct {
 	Name enc.String
 }
 
-func (LoginPacket) String() string {
+func (l LoginStartPacket) Info() PacketInfo {
+	return PacketInfo{
+		ID:              0x00,
+		Direction:       ServerBound,
+		ConnectionState: LoginState,
+	}
+}
+
+func (LoginStartPacket) String() string {
 	return "Login"
 }
 
-func (LoginPacket) ID() int {
-	return 0x00
-}
-
-func (l LoginPacket) Marshal() (*bytes.Buffer, error) {
+func (l LoginStartPacket) Marshal() ([]byte, error) {
 	buffer := new(bytes.Buffer)
 
 	if err := l.Name.Encode(buffer); err != nil {
 		return nil, err
 	}
 
-	return buffer, nil
+	return buffer.Bytes(), nil
 }
 
-func (LoginPacket) Unmarshal(data *bytes.Buffer) (Packet, error) {
-	lp := &LoginPacket{}
+func (LoginStartPacket) Unmarshal(data io.Reader) (Packet, error) {
+	lp := &LoginStartPacket{}
 
 	if err := lp.Name.Decode(data); err != nil {
 		return nil, err
@@ -37,29 +43,34 @@ func (LoginPacket) Unmarshal(data *bytes.Buffer) (Packet, error) {
 	return lp, nil
 }
 
+// https://wiki.vg/Protocol#Disconnect_.28login.29
 type DisconnectPacket struct {
 	Reason enc.String
+}
+
+func (d DisconnectPacket) Info() PacketInfo {
+	return PacketInfo{
+		ID:              0x00,
+		Direction:       ClientBound,
+		ConnectionState: LoginState,
+	}
 }
 
 func (DisconnectPacket) String() string {
 	return "Disconnect"
 }
 
-func (DisconnectPacket) ID() int {
-	return 0x00
-}
-
-func (d DisconnectPacket) Marshal() (*bytes.Buffer, error) {
+func (d DisconnectPacket) Marshal() ([]byte, error) {
 	buffer := new(bytes.Buffer)
 
 	if err := d.Reason.Encode(buffer); err != nil {
 		return nil, err
 	}
 
-	return buffer, nil
+	return buffer.Bytes(), nil
 }
 
-func (DisconnectPacket) Unmarshal(data *bytes.Buffer) (Packet, error) {
+func (DisconnectPacket) Unmarshal(data io.Reader) (Packet, error) {
 	dp := &DisconnectPacket{}
 
 	if err := dp.Reason.Decode(data); err != nil {
@@ -69,20 +80,25 @@ func (DisconnectPacket) Unmarshal(data *bytes.Buffer) (Packet, error) {
 	return dp, nil
 }
 
+// https://wiki.vg/Protocol#Login_Success
 type LoginSuccessPacket struct {
 	UUID     enc.String
 	Username enc.String
 }
 
+func (l LoginSuccessPacket) Info() PacketInfo {
+	return PacketInfo{
+		ID:              0x02,
+		Direction:       ClientBound,
+		ConnectionState: LoginState,
+	}
+}
+
 func (LoginSuccessPacket) String() string {
-	return "LoginSucess"
+	return "LoginSuccess"
 }
 
-func (LoginSuccessPacket) ID() int {
-	return 0x02
-}
-
-func (l LoginSuccessPacket) Marshal() (*bytes.Buffer, error) {
+func (l LoginSuccessPacket) Marshal() ([]byte, error) {
 	buffer := new(bytes.Buffer)
 
 	if err := l.UUID.Encode(buffer); err != nil {
@@ -93,10 +109,10 @@ func (l LoginSuccessPacket) Marshal() (*bytes.Buffer, error) {
 		return nil, err
 	}
 
-	return buffer, nil
+	return buffer.Bytes(), nil
 }
 
-func (LoginSuccessPacket) Unmarshal(data *bytes.Buffer) (Packet, error) {
+func (LoginSuccessPacket) Unmarshal(data io.Reader) (Packet, error) {
 	lsp := &LoginSuccessPacket{}
 
 	if err := lsp.UUID.Decode(data); err != nil {

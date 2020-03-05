@@ -3,6 +3,7 @@ package mcproto
 import (
 	"bytes"
 	enc "github.com/Raqbit/mcproto/encoding"
+	"io"
 )
 
 // https://wiki.vg/Protocol#Handshake
@@ -13,15 +14,19 @@ type HandshakePacket struct {
 	NextState  enc.VarInt
 }
 
+func (h HandshakePacket) Info() PacketInfo {
+	return PacketInfo{
+		ID:              0x00,
+		Direction:       ServerBound,
+		ConnectionState: HandshakeState,
+	}
+}
+
 func (HandshakePacket) String() string {
 	return "Handshake"
 }
 
-func (HandshakePacket) ID() int {
-	return 0x00
-}
-
-func (h HandshakePacket) Marshal() (*bytes.Buffer, error) {
+func (h HandshakePacket) Marshal() ([]byte, error) {
 	buffer := new(bytes.Buffer)
 
 	if err := h.ProtoVer.Encode(buffer); err != nil {
@@ -40,10 +45,10 @@ func (h HandshakePacket) Marshal() (*bytes.Buffer, error) {
 		return nil, err
 	}
 
-	return buffer, nil
+	return buffer.Bytes(), nil
 }
 
-func (HandshakePacket) Unmarshal(data *bytes.Buffer) (Packet, error) {
+func (HandshakePacket) Unmarshal(data io.Reader) (Packet, error) {
 	h := &HandshakePacket{}
 
 	if err := h.ProtoVer.Decode(data); err != nil {

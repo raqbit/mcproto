@@ -3,51 +3,60 @@ package mcproto
 import (
 	"bytes"
 	enc "github.com/Raqbit/mcproto/encoding"
+	"io"
 )
 
-// https://wiki.vg/Server_List_Ping#Request
+// https://wiki.vg/Protocol#Request
 type RequestPacket struct{}
+
+func (r RequestPacket) Info() PacketInfo {
+	return PacketInfo{
+		ID:              0x00,
+		Direction:       ServerBound,
+		ConnectionState: StatusState,
+	}
+}
 
 func (RequestPacket) String() string {
 	return "Request"
 }
 
-func (RequestPacket) Marshal() (*bytes.Buffer, error) {
+func (RequestPacket) Marshal() ([]byte, error) {
 	return nil, nil
 }
 
-func (RequestPacket) Unmarshal(_ *bytes.Buffer) (Packet, error) {
+func (RequestPacket) Unmarshal(_ io.Reader) (Packet, error) {
 	return &RequestPacket{}, nil
 }
 
-func (RequestPacket) ID() int {
-	return 0x00
-}
-
-// https://wiki.vg/Server_List_Ping#Response
+// https://wiki.vg/Protocol#Response
 type ResponsePacket struct {
 	Json enc.String
+}
+
+func (r ResponsePacket) Info() PacketInfo {
+	return PacketInfo{
+		ID:              0x00,
+		Direction:       ClientBound,
+		ConnectionState: StatusState,
+	}
 }
 
 func (ResponsePacket) String() string {
 	return "Response"
 }
 
-func (ResponsePacket) ID() int {
-	return 0x00
-}
-
-func (r ResponsePacket) Marshal() (*bytes.Buffer, error) {
+func (r ResponsePacket) Marshal() ([]byte, error) {
 	buffer := new(bytes.Buffer)
 
 	if err := r.Json.Encode(buffer); err != nil {
 		return nil, err
 	}
 
-	return buffer, nil
+	return buffer.Bytes(), nil
 }
 
-func (ResponsePacket) Unmarshal(data *bytes.Buffer) (Packet, error) {
+func (ResponsePacket) Unmarshal(data io.Reader) (Packet, error) {
 	rp := &ResponsePacket{}
 
 	if err := rp.Json.Decode(data); err != nil {
@@ -57,30 +66,34 @@ func (ResponsePacket) Unmarshal(data *bytes.Buffer) (Packet, error) {
 	return rp, nil
 }
 
-// https://wiki.vg/Server_List_Ping#Ping
+// https://wiki.vg/Protocol#Ping
 type PingPacket struct {
 	Payload enc.Long
+}
+
+func (p PingPacket) Info() PacketInfo {
+	return PacketInfo{
+		ID:              0x01,
+		Direction:       ServerBound,
+		ConnectionState: StatusState,
+	}
 }
 
 func (PingPacket) String() string {
 	return "Ping"
 }
 
-func (PingPacket) ID() int {
-	return 0x01
-}
-
-func (p PingPacket) Marshal() (*bytes.Buffer, error) {
+func (p PingPacket) Marshal() ([]byte, error) {
 	buffer := new(bytes.Buffer)
 
 	if err := p.Payload.Encode(buffer); err != nil {
 		return nil, err
 	}
 
-	return buffer, nil
+	return buffer.Bytes(), nil
 }
 
-func (PingPacket) Unmarshal(data *bytes.Buffer) (Packet, error) {
+func (PingPacket) Unmarshal(data io.Reader) (Packet, error) {
 	pp := &PingPacket{}
 
 	if err := pp.Payload.Decode(data); err != nil {
@@ -90,30 +103,34 @@ func (PingPacket) Unmarshal(data *bytes.Buffer) (Packet, error) {
 	return pp, nil
 }
 
-// https://wiki.vg/Server_List_Ping#Pong
+// https://wiki.vg/Protocol#Pong
 type PongPacket struct {
 	Payload enc.Long
+}
+
+func (p PongPacket) Info() PacketInfo {
+	return PacketInfo{
+		ID:              0x01,
+		Direction:       ClientBound,
+		ConnectionState: StatusState,
+	}
 }
 
 func (PongPacket) String() string {
 	return "Pong"
 }
 
-func (PongPacket) ID() int {
-	return 0x01
-}
-
-func (p PongPacket) Marshal() (*bytes.Buffer, error) {
+func (p PongPacket) Marshal() ([]byte, error) {
 	buffer := new(bytes.Buffer)
 
 	if err := p.Payload.Encode(buffer); err != nil {
 		return nil, err
 	}
 
-	return buffer, nil
+	return buffer.Bytes(), nil
 }
 
-func (PongPacket) Unmarshal(data *bytes.Buffer) (Packet, error) {
+func (PongPacket) Unmarshal(data io.Reader) (Packet, error) {
 	pp := &PongPacket{}
 
 	if err := pp.Payload.Decode(data); err != nil {
