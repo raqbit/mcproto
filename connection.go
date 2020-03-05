@@ -37,14 +37,31 @@ const (
 )
 
 type Connection struct {
-	rw    io.ReadWriteCloser
-	State ConnectionState
-	side  ConnectionSide
+	rw      io.ReadWriteCloser
+	State   ConnectionState
+	side    ConnectionSide
+	packets map[PacketInfo]Packet
 }
 
 // Creates a new connection using the provided tcp connection
-func NewConnection(conn io.ReadWriteCloser, side ConnectionSide) *Connection {
-	return &Connection{rw: conn, side: side, State: HandshakeState}
+func NewConnection(rw io.ReadWriteCloser, side ConnectionSide) *Connection {
+	conn := &Connection{
+		rw:      rw,
+		side:    side,
+		State:   HandshakeState,
+		packets: make(map[PacketInfo]Packet),
+	}
+
+	conn.registerPacket(HandshakePacket{})
+	conn.registerPacket(RequestPacket{})
+	conn.registerPacket(ResponsePacket{})
+	conn.registerPacket(PingPacket{})
+	conn.registerPacket(PongPacket{})
+	conn.registerPacket(DisconnectPacket{})
+	conn.registerPacket(LoginStartPacket{})
+	conn.registerPacket(LoginSuccessPacket{})
+
+	return conn
 }
 
 // Reads a packet from the connection
@@ -62,11 +79,14 @@ func (c *Connection) ReadPacket() (Packet, error) {
 	}
 
 	// Catch invalid packet lengths
-	if length < 0 || length > MaxPacketLength {
+	if length < 1 || length > MaxPacketLength {
 		return nil, ErrInvalidPacketLength
 	}
 
 	data := make([]byte, length)
+
+	// Create reader from packet bytes
+	dataReader := bytes.NewReader(data)
 
 	// Read complete packet into data slice
 	_, err = io.ReadFull(c.rw, data)
@@ -74,25 +94,27 @@ func (c *Connection) ReadPacket() (Packet, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not read packet data: %w", err)
 	}
-	// Create buffer
-	buff := bytes.NewBuffer(data)
 
-	pID, err := enc.ReadVarInt(buff)
+	pID, err := enc.ReadVarInt(dataReader)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not decode packet ID: %w", err)
 	}
 
-	// Decode packet
-	packetType, ok := PacketTypes[c.getReadDirection()][c.State][int(pID)]
+	decoder, ok := c.packets[PacketInfo{
+		ID:              int(pID),
+		Direction:       c.getReadDirection(),
+		ConnectionState: c.State,
+	}]
 
 	if !ok {
 		return nil, fmt.Errorf("unknown packet ID, direction: %s, state: %s, ID: %d", c.getReadDirection(), c.State, pID)
 	}
 
-	log.Printf("[Recv] %s, %d: %s\n", c.State, pID, packetType.String())
+	log.Printf("[Recv] %s, %d: %s\n", c.State, pID, decoder.String())
 
-	decodedPacket, err := packetType.Unmarshal(buff)
+	// Decode packet
+	decodedPacket, err := decoder.Unmarshal(dataReader)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not decode packet data: %w", err)
@@ -103,12 +125,14 @@ func (c *Connection) ReadPacket() (Packet, error) {
 
 // Writes a packet to the connection
 func (c *Connection) WritePacket(packetToWrite Packet) error {
-	log.Printf("[Send] %s, %d: %s\n", c.State, packetToWrite.ID(), packetToWrite.String())
+	packetInfo := packetToWrite.Info()
+
+	log.Printf("[Send] %s, %d: %s\n", c.State, packetInfo.ID, packetToWrite.String())
 
 	idBuff := new(bytes.Buffer)
 
 	// Write packet ID to packet buffer
-	if err := enc.WriteVarInt(idBuff, enc.VarInt(packetToWrite.ID())); err != nil {
+	if err := enc.WriteVarInt(idBuff, enc.VarInt(packetInfo.ID)); err != nil {
 		return fmt.Errorf("could not write packet id: %w", err)
 	}
 
@@ -119,9 +143,11 @@ func (c *Connection) WritePacket(packetToWrite Packet) error {
 	}
 
 	// Write packet length to connection
-	if err = enc.WriteVarInt(c.rw, enc.VarInt(idBuff.Len()+dataBuff.Len())); err != nil {
+	if err = enc.WriteVarInt(c.rw, enc.VarInt(idBuff.Len()+len(dataBuff))); err != nil {
 		return fmt.Errorf("could not write packet length: %w", err)
 	}
+
+	// TODO: handle case where less than x bytes were written
 
 	// Write packet ID to connection
 	if _, err = c.rw.Write(idBuff.Bytes()); err != nil {
@@ -129,7 +155,7 @@ func (c *Connection) WritePacket(packetToWrite Packet) error {
 	}
 
 	// Write packet data to connection
-	if _, err = c.rw.Write(dataBuff.Bytes()); err != nil {
+	if _, err = c.rw.Write(dataBuff); err != nil {
 		return fmt.Errorf("could not write packet data: %w", err)
 	}
 
@@ -154,4 +180,8 @@ func (c *Connection) getWriteDirection() PacketDirection {
 
 func (c *Connection) Close() error {
 	return c.rw.Close()
+}
+
+func (c *Connection) registerPacket(packet Packet) {
+	c.packets[packet.Info()] = packet
 }

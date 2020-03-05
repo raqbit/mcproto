@@ -1,19 +1,25 @@
 package mcproto
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
+	"io"
 )
 
 const MaxPacketLength = 1048576
 
+type PacketInfo struct {
+	ID              int
+	Direction       PacketDirection
+	ConnectionState ConnectionState
+}
+
 // Packet which has been decoded into a struct.
 type Packet interface {
 	fmt.Stringer
-	ID() int
-	Marshal() (*bytes.Buffer, error)
-	Unmarshal(*bytes.Buffer) (Packet, error)
+	Info() PacketInfo
+	Marshal() ([]byte, error)
+	Unmarshal(io.Reader) (Packet, error)
 }
 
 // The direction a packet
@@ -36,30 +42,3 @@ const (
 var (
 	ErrInvalidPacketLength = errors.New("packet has a malformed length")
 )
-
-// All handled types of packet.
-// Used for decoding packets by direction, connection state & id.
-var PacketTypes = map[PacketDirection]map[ConnectionState]map[int]Packet{
-	ServerBound: {
-		HandshakeState: {
-			HandshakePacket{}.ID(): HandshakePacket{},
-		},
-		StatusState: {
-			RequestPacket{}.ID(): RequestPacket{},
-			PingPacket{}.ID():    PingPacket{},
-		},
-		LoginState: {
-			LoginPacket{}.ID(): LoginPacket{},
-		},
-	},
-	ClientBound: {
-		StatusState: {
-			ResponsePacket{}.ID(): ResponsePacket{},
-			PongPacket{}.ID():     PongPacket{},
-		},
-		LoginState: {
-			DisconnectPacket{}.ID():   DisconnectPacket{},
-			LoginSuccessPacket{}.ID(): LoginSuccessPacket{},
-		},
-	},
-}
