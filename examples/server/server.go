@@ -126,14 +126,10 @@ func handleHandshakePacket(conn *mcproto.Connection, p *mcproto.HandshakePacket)
 		return fmt.Errorf("unsupported protocol version: %d", p.ProtoVer)
 	}
 
-	switch p.NextState {
-	case 1:
-		conn.State = mcproto.StatusState
-	case 2:
-		conn.State = mcproto.LoginState
-	default:
+	if p.NextState != mcproto.StatusState && p.NextState != mcproto.LoginState {
 		return fmt.Errorf("handshake packet with invalid next state")
+	} else {
+		conn.State = mcproto.ConnectionState(p.NextState)
+		return nil
 	}
-
-	return nil
 }
