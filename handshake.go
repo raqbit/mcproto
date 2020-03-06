@@ -48,22 +48,22 @@ func (h HandshakePacket) Marshal() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (HandshakePacket) Unmarshal(data io.Reader) (Packet, error) {
+func (HandshakePacket) Unmarshal(r io.Reader) (Packet, error) {
 	h := &HandshakePacket{}
 
-	if err := h.ProtoVer.Decode(data); err != nil {
+	if err := h.ProtoVer.Decode(r); err != nil {
 		return nil, err
 	}
 
-	if err := h.ServerAddr.Decode(data); err != nil {
+	if err := h.ServerAddr.Decode(r); err != nil {
 		return nil, err
 	}
 
-	if err := h.ServerPort.Decode(data); err != nil {
+	if err := h.ServerPort.Decode(r); err != nil {
 		return nil, err
 	}
 
-	if err := h.NextState.Decode(data); err != nil {
+	if err := h.NextState.Decode(r); err != nil {
 		return nil, err
 	}
 

@@ -60,6 +60,9 @@ func NewConnection(rw io.ReadWriteCloser, side ConnectionSide) *Connection {
 	conn.registerPacket(DisconnectPacket{})
 	conn.registerPacket(LoginStartPacket{})
 	conn.registerPacket(LoginSuccessPacket{})
+	conn.registerPacket(JoinGamePacket{})
+	conn.registerPacket(ClientSettingsPacket{})
+	conn.registerPacket(PlayerPositionAndLookPacket{})
 
 	return conn
 }
@@ -108,7 +111,7 @@ func (c *Connection) ReadPacket() (Packet, error) {
 	}]
 
 	if !ok {
-		return nil, fmt.Errorf("unknown packet ID, direction: %s, state: %s, ID: %d", c.getReadDirection(), c.State, pID)
+		return nil, fmt.Errorf("unknown packet ID, direction: %s, state: %s, ID: %#x", c.getReadDirection(), c.State, pID)
 	}
 
 	log.Printf("[Recv] %s, %d: %s\n", c.State, pID, decoder.String())
@@ -136,14 +139,14 @@ func (c *Connection) WritePacket(packetToWrite Packet) error {
 		return fmt.Errorf("could not write packet id: %w", err)
 	}
 
-	dataBuff, err := packetToWrite.Marshal()
+	data, err := packetToWrite.Marshal()
 
 	if err != nil {
 		return fmt.Errorf("could not encode packet data: %w", err)
 	}
 
 	// Write packet length to connection
-	if err = enc.WriteVarInt(c.rw, enc.VarInt(idBuff.Len()+len(dataBuff))); err != nil {
+	if err = enc.WriteVarInt(c.rw, enc.VarInt(idBuff.Len()+len(data))); err != nil {
 		return fmt.Errorf("could not write packet length: %w", err)
 	}
 
@@ -155,7 +158,7 @@ func (c *Connection) WritePacket(packetToWrite Packet) error {
 	}
 
 	// Write packet data to connection
-	if _, err = c.rw.Write(dataBuff); err != nil {
+	if _, err = c.rw.Write(data); err != nil {
 		return fmt.Errorf("could not write packet data: %w", err)
 	}
 

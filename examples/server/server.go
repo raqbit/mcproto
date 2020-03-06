@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,6 +9,8 @@ import (
 	enc "github.com/Raqbit/mcproto/encoding"
 	"io"
 	"log"
+	"math"
+	"math/rand"
 	"net"
 )
 
@@ -50,8 +53,8 @@ func handleConnection(tcpConn net.Conn) {
 				return
 			}
 
-			log.Printf("Invalid packet: %s", err)
-			return
+			log.Printf("Error reading packet: %s", err)
+			continue
 		}
 
 		err = handlePacket(conn, p)
@@ -73,14 +76,64 @@ func handlePacket(conn *mcproto.Connection, p mcproto.Packet) error {
 		return handlePingPacket(conn, v)
 	case *mcproto.LoginStartPacket:
 		return handleLoginPacket(conn, v)
+	case *mcproto.ClientSettingsPacket:
+		return handleClientSettingsPacket(conn, v)
 	default:
 		return fmt.Errorf("unhandled packet: %s", p)
 	}
 }
 
+func handleClientSettingsPacket(conn *mcproto.Connection, v *mcproto.ClientSettingsPacket) error {
+	conn.WritePacket(mcproto.PlayerPositionAndLookPacket{
+		X:          0,
+		Y:          0,
+		Z:          0,
+		Yaw:        0,
+		Pitch:      0,
+		Flags:      0,
+		TeleportID: 0,
+	})
+	return nil
+}
+
 func handleLoginPacket(conn *mcproto.Connection, v *mcproto.LoginStartPacket) error {
 	conn.State = mcproto.PlayState
-	return conn.WritePacket(mcproto.LoginSuccessPacket{UUID: "f2bf38cd-0073-4703-94fa-d49d406a4885", Username: v.Name})
+	err := conn.WritePacket(mcproto.LoginSuccessPacket{UUID: "f2bf38cd-0073-4703-94fa-d49d406a4885", Username: v.Name})
+
+	if err != nil {
+		return fmt.Errorf("could not write login success packet: %w", err)
+	}
+
+	err = conn.WritePacket(mcproto.JoinGamePacket{
+		EntityID:            enc.Int(genRandomEid()),
+		GameMode:            1,
+		Dimension:           enc.Int(0),
+		HashedSeed:          0,
+		MaxPlayers:          10,
+		LevelType:           "flat",
+		ViewDistance:        2,
+		ReducedDebug:        false,
+		EnableRespawnScreen: true,
+	})
+
+	if err != nil {
+		return fmt.Errorf("could not write join game packet: %w", err)
+	}
+
+	buffer := new(bytes.Buffer)
+
+	enc.WriteString(buffer, "Raqbit custom")
+
+	err = conn.WritePacket(mcproto.PluginMessagePacket{
+		Channel: "minecraft:brand",
+		Data:    buffer.Bytes(),
+	})
+
+	if err != nil {
+		return fmt.Errorf("could not write brand packet: %w", err)
+	}
+
+	return nil
 }
 
 func handlePingPacket(conn *mcproto.Connection, v *mcproto.PingPacket) error {
@@ -132,4 +185,8 @@ func handleHandshakePacket(conn *mcproto.Connection, p *mcproto.HandshakePacket)
 		conn.State = mcproto.ConnectionState(p.NextState)
 		return nil
 	}
+}
+
+func genRandomEid() int32 {
+	return int32(rand.Intn(math.MaxInt32))
 }

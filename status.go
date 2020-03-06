@@ -56,10 +56,10 @@ func (r ResponsePacket) Marshal() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (ResponsePacket) Unmarshal(data io.Reader) (Packet, error) {
+func (ResponsePacket) Unmarshal(r io.Reader) (Packet, error) {
 	rp := &ResponsePacket{}
 
-	if err := rp.Json.Decode(data); err != nil {
+	if err := rp.Json.Decode(r); err != nil {
 		return nil, err
 	}
 
@@ -93,10 +93,10 @@ func (p PingPacket) Marshal() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (PingPacket) Unmarshal(data io.Reader) (Packet, error) {
+func (PingPacket) Unmarshal(r io.Reader) (Packet, error) {
 	pp := &PingPacket{}
 
-	if err := pp.Payload.Decode(data); err != nil {
+	if err := pp.Payload.Decode(r); err != nil {
 		return nil, err
 	}
 
@@ -130,10 +130,10 @@ func (p PongPacket) Marshal() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (PongPacket) Unmarshal(data io.Reader) (Packet, error) {
+func (PongPacket) Unmarshal(r io.Reader) (Packet, error) {
 	pp := &PongPacket{}
 
-	if err := pp.Payload.Decode(data); err != nil {
+	if err := pp.Payload.Decode(r); err != nil {
 		return nil, err
 	}
 
