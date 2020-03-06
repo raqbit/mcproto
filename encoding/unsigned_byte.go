@@ -3,7 +3,7 @@ package encoding
 import "io"
 
 // Minecraft Protocol UnsignedByte type
-type UnsignedByte byte
+type UnsignedByte uint8
 
 func (ub *UnsignedByte) Decode(r io.Reader) error {
 	bt, err := ReadUnsignedByte(r)
@@ -32,4 +32,3 @@ func WriteUnsignedByte(w io.Writer, value UnsignedByte) error {
 	_, err := w.Write(bytes[:1])
 	return err
 }
-

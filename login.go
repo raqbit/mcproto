@@ -33,10 +33,10 @@ func (l LoginStartPacket) Marshal() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (LoginStartPacket) Unmarshal(data io.Reader) (Packet, error) {
+func (LoginStartPacket) Unmarshal(r io.Reader) (Packet, error) {
 	lp := &LoginStartPacket{}
 
-	if err := lp.Name.Decode(data); err != nil {
+	if err := lp.Name.Decode(r); err != nil {
 		return nil, err
 	}
 
@@ -70,10 +70,10 @@ func (d DisconnectPacket) Marshal() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (DisconnectPacket) Unmarshal(data io.Reader) (Packet, error) {
+func (DisconnectPacket) Unmarshal(r io.Reader) (Packet, error) {
 	dp := &DisconnectPacket{}
 
-	if err := dp.Reason.Decode(data); err != nil {
+	if err := dp.Reason.Decode(r); err != nil {
 		return nil, err
 	}
 
@@ -112,14 +112,14 @@ func (l LoginSuccessPacket) Marshal() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (LoginSuccessPacket) Unmarshal(data io.Reader) (Packet, error) {
+func (LoginSuccessPacket) Unmarshal(r io.Reader) (Packet, error) {
 	lsp := &LoginSuccessPacket{}
 
-	if err := lsp.UUID.Decode(data); err != nil {
+	if err := lsp.UUID.Decode(r); err != nil {
 		return nil, err
 	}
 
-	if err := lsp.Username.Decode(data); err != nil {
+	if err := lsp.Username.Decode(r); err != nil {
 		return nil, err
 	}
 
