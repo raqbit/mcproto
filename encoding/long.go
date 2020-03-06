@@ -20,12 +20,15 @@ func (l *Long) Decode(r io.Reader) error {
 }
 
 func (l *Long) Encode(w io.Writer) error {
-	return WriteLong(w, *l)
+	_, err := w.Write(WriteLong(*l))
+	return err
 }
 
 // WriteLong writes the passed Long to the writer
-func WriteLong(buff io.Writer, value Long) error {
-	return binary.Write(buff, binary.BigEndian, int64(value))
+func WriteLong(value Long) []byte {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, uint64(value))
+	return buf
 }
 
 // ReadLong reads a Long from the reader

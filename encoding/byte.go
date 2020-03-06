@@ -20,12 +20,13 @@ func (b *Byte) Decode(r io.Reader) error {
 }
 
 func (b *Byte) Encode(w io.Writer) error {
-	return WriteByte(w, *b)
+	_, err := w.Write(WriteByte(*b))
+	return err
 }
 
 // WriteByte writes the passed Byte to the writer
-func WriteByte(w io.Writer, value Byte) error {
-	return binary.Write(w, binary.BigEndian, int8(value))
+func WriteByte(value Byte) []byte {
+	return []byte{byte(value)}
 }
 
 // ReadByte reads a Byte from the reader

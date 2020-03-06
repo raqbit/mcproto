@@ -2,7 +2,6 @@ package encoding
 
 import (
 	"bytes"
-	"io"
 	"testing"
 )
 
@@ -15,22 +14,13 @@ func TestWriteBool(t *testing.T) {
 		{Value: false, Expected: []byte{0x00}},
 	}
 
-	var buff bytes.Buffer
-	_ = io.Writer(&buff)
-
 	for _, test := range tests {
-		err := WriteBool(&buff, test.Value)
+		actual := WriteBool(test.Value)
 
-		if err != nil {
-			t.Error(err)
-		}
-
-		if bytes.Compare(test.Expected, buff.Bytes()) != 0 {
+		if bytes.Compare(test.Expected, actual) != 0 {
 			// Not equal
-			t.Errorf("Unable to convert %v: %v != %v", test.Value, buff.Bytes(), test.Expected)
+			t.Errorf("Unable to convert %v: %v != %v", test.Value, actual, test.Expected)
 		}
-
-		buff.Reset()
 	}
 }
 
@@ -44,7 +34,6 @@ func TestReadBool(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	_ = io.Writer(&buff)
 
 	for _, test := range tests {
 

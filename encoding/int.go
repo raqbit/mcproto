@@ -20,12 +20,15 @@ func (i *Int) Decode(r io.Reader) error {
 }
 
 func (i *Int) Encode(w io.Writer) error {
-	return WriteInt(w, *i)
+	_, err := w.Write(WriteInt(*i))
+	return err
 }
 
 // WriteInt writes the passed integer to the writer.
-func WriteInt(w io.Writer, value Int) error {
-	return binary.Write(w, binary.BigEndian, int32(value))
+func WriteInt(value Int) []byte {
+	buf := make([]byte, 4)
+	binary.BigEndian.PutUint32(buf, uint32(value))
+	return buf
 }
 
 // ReadInt reads an integer from the reader.

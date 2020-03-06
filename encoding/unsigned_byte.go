@@ -17,7 +17,8 @@ func (ub *UnsignedByte) Decode(r io.Reader) error {
 }
 
 func (ub *UnsignedByte) Encode(w io.Writer) error {
-	return WriteUnsignedByte(w, *ub)
+	_, err := w.Write(WriteUnsignedByte(*ub))
+	return err
 }
 
 func ReadUnsignedByte(r io.Reader) (UnsignedByte, error) {
@@ -26,9 +27,6 @@ func ReadUnsignedByte(r io.Reader) (UnsignedByte, error) {
 	return UnsignedByte(bytes[0]), err
 }
 
-func WriteUnsignedByte(w io.Writer, value UnsignedByte) error {
-	var bytes [1]byte
-	bytes[0] = byte(value)
-	_, err := w.Write(bytes[:1])
-	return err
+func WriteUnsignedByte(value UnsignedByte) []byte {
+	return []byte{byte(value)}
 }

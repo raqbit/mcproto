@@ -27,19 +27,16 @@ func (st *String) Decode(r io.Reader) error {
 }
 
 func (st *String) Encode(w io.Writer) error {
-	return WriteString(w, *st)
+	_, err := w.Write(WriteString(*st))
+	return err
 }
 
 // WriteString writes a VarInt prefixed utf-8 string to the
 // writer.
-func WriteString(w io.Writer, str String) error {
-	b := []byte(str)
-	err := WriteVarInt(w, VarInt(len(b)))
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(b)
-	return err
+func WriteString(str String) []byte {
+	b := WriteVarInt(VarInt(len(str)))
+	b = append(b, []byte(str)...)
+	return b
 }
 
 // ReadString reads a VarInt prefixed utf-8 string to the

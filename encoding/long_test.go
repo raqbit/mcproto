@@ -2,7 +2,6 @@ package encoding
 
 import (
 	"bytes"
-	"io"
 	"math"
 	"testing"
 )
@@ -19,22 +18,14 @@ func TestWriteLong(t *testing.T) {
 		{Value: math.MaxInt64, Expected: []byte{0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
 	}
 
-	var buff bytes.Buffer
-	_ = io.Writer(&buff)
-
 	for _, test := range tests {
-		err := WriteLong(&buff, test.Value)
+		actual := WriteLong(test.Value)
 
-		if err != nil {
-			t.Error(err)
-		}
-
-		if bytes.Compare(test.Expected, buff.Bytes()) != 0 {
+		if bytes.Compare(test.Expected, actual) != 0 {
 			// Not equal
-			t.Errorf("Unable to convert %d: %v != %v", test.Value, buff.Bytes(), test.Expected)
+			t.Errorf("Unable to convert %d: %v != %v", test.Value, actual, test.Expected)
 		}
 
-		buff.Reset()
 	}
 }
 
@@ -51,10 +42,8 @@ func TestReadLong(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	_ = io.Writer(&buff)
 
 	for _, test := range tests {
-
 		buff.Write(test.Value)
 
 		actual, err := ReadLong(&buff)

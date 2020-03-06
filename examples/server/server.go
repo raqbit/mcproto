@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -83,16 +82,7 @@ func handlePacket(conn *mcproto.Connection, p mcproto.Packet) error {
 	}
 }
 
-func handleClientSettingsPacket(conn *mcproto.Connection, v *mcproto.ClientSettingsPacket) error {
-	conn.WritePacket(mcproto.PlayerPositionAndLookPacket{
-		X:          0,
-		Y:          0,
-		Z:          0,
-		Yaw:        0,
-		Pitch:      0,
-		Flags:      0,
-		TeleportID: 0,
-	})
+func handleClientSettingsPacket(_ *mcproto.Connection, _ *mcproto.ClientSettingsPacket) error {
 	return nil
 }
 
@@ -120,17 +110,27 @@ func handleLoginPacket(conn *mcproto.Connection, v *mcproto.LoginStartPacket) er
 		return fmt.Errorf("could not write join game packet: %w", err)
 	}
 
-	buffer := new(bytes.Buffer)
-
-	enc.WriteString(buffer, "Raqbit custom")
-
 	err = conn.WritePacket(mcproto.PluginMessagePacket{
 		Channel: "minecraft:brand",
-		Data:    buffer.Bytes(),
+		Data:    enc.WriteString("Raqbit custom"),
 	})
 
 	if err != nil {
 		return fmt.Errorf("could not write brand packet: %w", err)
+	}
+
+	err = conn.WritePacket(mcproto.PlayerPositionAndLookPacket{
+		X:          0,
+		Y:          0,
+		Z:          0,
+		Yaw:        0,
+		Pitch:      0,
+		Flags:      0,
+		TeleportID: 0,
+	})
+
+	if err != nil {
+		return fmt.Errorf("could not write player posision and look packet: %w", err)
 	}
 
 	return nil

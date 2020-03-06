@@ -3,6 +3,7 @@ package encoding
 import (
 	"encoding/binary"
 	"io"
+	"math"
 )
 
 // Minecraft Protocol Double type
@@ -20,12 +21,15 @@ func (l *Double) Decode(r io.Reader) error {
 }
 
 func (l *Double) Encode(w io.Writer) error {
-	return WriteDouble(w, *l)
+	_, err := w.Write(WriteDouble(*l))
+	return err
 }
 
 // WriteDouble writes the passed Double to the writer
-func WriteDouble(buff io.Writer, value Double) error {
-	return binary.Write(buff, binary.BigEndian, float64(value))
+func WriteDouble(value Double) []byte {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, math.Float64bits(float64(value)))
+	return buf
 }
 
 // ReadDouble reads a Double from the reader

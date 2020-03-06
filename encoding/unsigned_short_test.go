@@ -2,7 +2,6 @@ package encoding
 
 import (
 	"bytes"
-	"io"
 	"math"
 	"testing"
 )
@@ -19,22 +18,13 @@ func TestWriteUnsignedShort(t *testing.T) {
 		{Value: math.MaxUint16, Expected: []byte{0xff, 0xff}},
 	}
 
-	var buff bytes.Buffer
-	_ = io.Writer(&buff)
-
 	for _, test := range tests {
-		err := WriteUnsignedShort(&buff, test.Value)
+		actual := WriteUnsignedShort(test.Value)
 
-		if err != nil {
-			t.Error(err)
-		}
-
-		if bytes.Compare(test.Expected, buff.Bytes()) != 0 {
+		if bytes.Compare(test.Expected, actual) != 0 {
 			// Not equal
-			t.Errorf("Unable to convert %d: %v != %v", test.Value, buff.Bytes(), test.Expected)
+			t.Errorf("Unable to convert %d: %v != %v", test.Value, actual, test.Expected)
 		}
-
-		buff.Reset()
 	}
 }
 
@@ -51,7 +41,6 @@ func TestReadUnsignedShort(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	_ = io.Writer(&buff)
 
 	for _, test := range tests {
 

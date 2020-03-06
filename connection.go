@@ -132,12 +132,7 @@ func (c *Connection) WritePacket(packetToWrite Packet) error {
 
 	log.Printf("[Send] %s, %d: %s\n", c.State, packetInfo.ID, packetToWrite.String())
 
-	idBuff := new(bytes.Buffer)
-
-	// Write packet ID to packet buffer
-	if err := enc.WriteVarInt(idBuff, enc.VarInt(packetInfo.ID)); err != nil {
-		return fmt.Errorf("could not write packet id: %w", err)
-	}
+	idBuff := enc.WriteVarInt(enc.VarInt(packetInfo.ID))
 
 	data, err := packetToWrite.Marshal()
 
@@ -145,15 +140,18 @@ func (c *Connection) WritePacket(packetToWrite Packet) error {
 		return fmt.Errorf("could not encode packet data: %w", err)
 	}
 
+	// Calculate packet length
+	packetLen := enc.VarInt(len(idBuff) + len(data))
+
 	// Write packet length to connection
-	if err = enc.WriteVarInt(c.rw, enc.VarInt(idBuff.Len()+len(data))); err != nil {
+	if err = packetLen.Encode(c.rw); err != nil {
 		return fmt.Errorf("could not write packet length: %w", err)
 	}
 
 	// TODO: handle case where less than x bytes were written
 
 	// Write packet ID to connection
-	if _, err = c.rw.Write(idBuff.Bytes()); err != nil {
+	if _, err = c.rw.Write(idBuff); err != nil {
 		return fmt.Errorf("could not write packet id: %w", err)
 	}
 

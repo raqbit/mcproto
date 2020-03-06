@@ -30,11 +30,13 @@ func (vi *VarInt) Decode(r io.Reader) error {
 }
 
 func (vi *VarInt) Encode(w io.Writer) error {
-	return WriteVarInt(w, *vi)
+	_, err := w.Write(WriteVarInt(*vi))
+	return err
 }
 
 // WriteVarInt writes the passed VarInt encoded integer to the writer.
-func WriteVarInt(w io.Writer, value VarInt) error {
+func WriteVarInt(value VarInt) []byte {
+	buf := make([]byte, 0)
 	for cont := true; cont; cont = value != 0 {
 		temp := byte(value & 0x7F)
 
@@ -45,12 +47,10 @@ func WriteVarInt(w io.Writer, value VarInt) error {
 			temp |= 0x80
 		}
 
-		if err := WriteUnsignedByte(w, UnsignedByte(temp)); err != nil {
-			return err
-		}
+		buf = append(buf, WriteUnsignedByte(UnsignedByte(temp))[0])
 	}
 
-	return nil
+	return buf
 }
 
 // ReadVarInt reads a VarInt encoded integer from the reader.

@@ -20,12 +20,17 @@ func (b *Bool) Decode(r io.Reader) error {
 }
 
 func (b *Bool) Encode(w io.Writer) error {
-	return WriteBool(w, *b)
+	_, err := w.Write(WriteBool(*b))
+	return err
 }
 
 // WriteBool writes the passed Bool to the writer
-func WriteBool(buff io.Writer, value Bool) error {
-	return binary.Write(buff, binary.BigEndian, bool(value))
+func WriteBool(value Bool) []byte {
+	var b byte
+	if value {
+		b = 0x01
+	}
+	return []byte{b}
 }
 
 // ReadBool reads a Bool from the reader

@@ -20,12 +20,15 @@ func (us *UnsignedShort) Decode(r io.Reader) error {
 }
 
 func (us *UnsignedShort) Encode(w io.Writer) error {
-	return WriteUnsignedShort(w, *us)
+	_, err := w.Write(WriteUnsignedShort(*us))
+	return err
 }
 
 // WriteUnsignedShort writes the passed UnsignedShort to the writer
-func WriteUnsignedShort(buff io.Writer, value UnsignedShort) error {
-	return binary.Write(buff, binary.BigEndian, uint16(value))
+func WriteUnsignedShort(value UnsignedShort) []byte {
+	buf := make([]byte, 2)
+	binary.BigEndian.PutUint16(buf, uint16(value))
+	return buf
 }
 
 // ReadUnsignedShort reads an UnsignedShort from the reader
