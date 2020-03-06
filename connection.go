@@ -12,10 +12,10 @@ import (
 type ConnectionState uint8
 
 const (
-	HandshakeState ConnectionState = iota // Client is making a handshake
-	StatusState                           // Client is receiving the server status
-	LoginState                            // Client is logging in
-	PlayState                             // Client is playing
+	HandshakeState = 0x00 // Client is making a handshake
+	StatusState    = 0x01 // Client is receiving the server status
+	LoginState     = 0x02 // Client is logging in
+	PlayState      = 0x03 // Client is playing
 )
 
 func (c ConnectionState) String() string {
