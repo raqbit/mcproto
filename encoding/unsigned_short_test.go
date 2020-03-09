@@ -8,7 +8,7 @@ import (
 
 func TestWriteUnsignedShort(t *testing.T) {
 	tests := []struct {
-		Value    UnsignedShort
+		Value    uint16
 		Expected []byte
 	}{
 		{Value: 0, Expected: []byte{0x00, 0x00}},
@@ -30,7 +30,7 @@ func TestWriteUnsignedShort(t *testing.T) {
 
 func TestReadUnsignedShort(t *testing.T) {
 	tests := []struct {
-		Expected UnsignedShort
+		Expected uint16
 		Value    []byte
 	}{
 		{Expected: 0, Value: []byte{0x00, 0x00}},

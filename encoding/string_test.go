@@ -7,7 +7,7 @@ import (
 
 func TestWriteString(t *testing.T) {
 	tests := []struct {
-		Value    String
+		Value    string
 		Expected []byte
 	}{
 		{Value: "john", Expected: []byte{0x04, 0x6a, 0x6f, 0x68, 0x6e}},
@@ -28,7 +28,7 @@ func TestWriteString(t *testing.T) {
 
 func TestReadString(t *testing.T) {
 	tests := []struct {
-		Expected String
+		Expected string
 		Value    []byte
 	}{
 		{Expected: "john", Value: []byte{0x04, 0x6a, 0x6f, 0x68, 0x6e}},
@@ -42,7 +42,7 @@ func TestReadString(t *testing.T) {
 	for _, test := range tests {
 		buff.Write(test.Value)
 
-		actual, err := ReadString(&buff)
+		actual, err := ReadString(&buff, 100)
 
 		if err != nil {
 			t.Error(err)

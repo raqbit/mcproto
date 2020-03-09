@@ -7,7 +7,7 @@ import (
 
 func TestWriteInt(t *testing.T) {
 	tests := []struct {
-		Value    Int
+		Value    int32
 		Expected []byte
 	}{
 		{Value: 0, Expected: []byte{0x00, 0x00, 0x00, 0x00}},
@@ -30,7 +30,7 @@ func TestWriteInt(t *testing.T) {
 
 func TestReadInt(t *testing.T) {
 	tests := []struct {
-		Expected Int
+		Expected int32
 		Value    []byte
 	}{
 		{Expected: 0, Value: []byte{0x00, 0x00, 0x00, 0x00}},

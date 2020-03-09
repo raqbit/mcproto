@@ -5,27 +5,7 @@ import (
 	"io"
 )
 
-// Minecraft Protocol Bool type
-type Bool bool
-
-func (b *Bool) Decode(r io.Reader) error {
-	readBool, err := ReadBool(r)
-
-	if err != nil {
-		return err
-	}
-
-	*b = readBool
-	return nil
-}
-
-func (b *Bool) Encode(w io.Writer) error {
-	_, err := w.Write(WriteBool(*b))
-	return err
-}
-
-// WriteBool writes the passed Bool to the writer
-func WriteBool(value Bool) []byte {
+func WriteBool(value bool) []byte {
 	var b byte
 	if value {
 		b = 0x01
@@ -33,9 +13,8 @@ func WriteBool(value Bool) []byte {
 	return []byte{b}
 }
 
-// ReadBool reads a Bool from the reader
-func ReadBool(buff io.Reader) (Bool, error) {
+func ReadBool(buff io.Reader) (bool, error) {
 	var bl bool
 	err := binary.Read(buff, binary.BigEndian, &bl)
-	return Bool(bl), err
+	return bl, err
 }

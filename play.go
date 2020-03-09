@@ -1,28 +1,22 @@
 package mcproto
 
-import (
-	"bytes"
-	enc "github.com/Raqbit/mcproto/encoding"
-	"io"
-)
-
-type JoinGamePacket struct {
-	EntityID            enc.Int
-	GameMode            enc.UnsignedByte
-	Dimension           enc.Int
-	HashedSeed          enc.Long
-	MaxPlayers          enc.UnsignedByte
-	LevelType           enc.String
-	ViewDistance        enc.VarInt
-	ReducedDebug        enc.Bool
-	EnableRespawnScreen enc.Bool
+type SJoinGamePacket struct {
+	PlayerID            int32
+	GameMode            uint8
+	Dimension           int32
+	HashedSeed          int64
+	MaxPlayers          uint8
+	LevelType           string
+	ViewDistance        int32
+	ReducedDebug        bool
+	EnableRespawnScreen bool
 }
 
-func (JoinGamePacket) String() string {
+func (*SJoinGamePacket) String() string {
 	return "JoinGame"
 }
 
-func (JoinGamePacket) Info() PacketInfo {
+func (*SJoinGamePacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x26,
 		Direction:       ClientBound,
@@ -30,100 +24,98 @@ func (JoinGamePacket) Info() PacketInfo {
 	}
 }
 
-func (j JoinGamePacket) Marshal() ([]byte, error) {
-	buffer := new(bytes.Buffer)
-
-	if err := j.EntityID.Encode(buffer); err != nil {
-		return nil, err
+func (j *SJoinGamePacket) Marshal(w PacketWriter) error {
+	if err := w.WriteInt(j.PlayerID); err != nil {
+		return err
 	}
 
-	if err := j.GameMode.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteUnsignedByte(j.GameMode); err != nil {
+		return err
 	}
 
-	if err := j.Dimension.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteInt(j.Dimension); err != nil {
+		return err
 	}
 
-	if err := j.HashedSeed.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteLong(j.HashedSeed); err != nil {
+		return err
 	}
 
-	if err := j.MaxPlayers.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteUnsignedByte(j.MaxPlayers); err != nil {
+		return err
 	}
 
-	if err := j.LevelType.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteString(j.LevelType); err != nil {
+		return err
 	}
 
-	if err := j.ViewDistance.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteVarInt(j.ViewDistance); err != nil {
+		return err
 	}
 
-	if err := j.ReducedDebug.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteBool(j.ReducedDebug); err != nil {
+		return err
 	}
 
-	if err := j.EnableRespawnScreen.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteBool(j.EnableRespawnScreen); err != nil {
+		return err
 	}
 
-	return buffer.Bytes(), nil
+	return nil
 }
 
-func (JoinGamePacket) Unmarshal(r io.Reader) (Packet, error) {
-	j := &JoinGamePacket{}
+func (j *SJoinGamePacket) Unmarshal(r PacketReader) error {
+	var err error
 
-	if err := j.EntityID.Decode(r); err != nil {
-		return nil, err
+	if j.PlayerID, err = r.ReadInt(); err != nil {
+		return err
 	}
 
-	if err := j.GameMode.Decode(r); err != nil {
-		return nil, err
+	if j.GameMode, err = r.ReadUnsignedByte(); err != nil {
+		return err
 	}
 
-	if err := j.Dimension.Decode(r); err != nil {
-		return nil, err
+	if j.Dimension, err = r.ReadInt(); err != nil {
+		return err
 	}
 
-	if err := j.HashedSeed.Decode(r); err != nil {
-		return nil, err
+	if j.HashedSeed, err = r.ReadLong(); err != nil {
+		return err
 	}
 
-	if err := j.MaxPlayers.Decode(r); err != nil {
-		return nil, err
+	if j.MaxPlayers, err = r.ReadUnsignedByte(); err != nil {
+		return err
 	}
 
-	if err := j.LevelType.Decode(r); err != nil {
-		return nil, err
+	if j.LevelType, err = r.ReadString(16); err != nil {
+		return err
 	}
 
-	if err := j.ViewDistance.Decode(r); err != nil {
-		return nil, err
+	if j.ViewDistance, err = r.ReadVarInt(); err != nil {
+		return err
 	}
 
-	if err := j.ReducedDebug.Decode(r); err != nil {
-		return nil, err
+	if j.ReducedDebug, err = r.ReadBool(); err != nil {
+		return err
 	}
 
-	if err := j.EnableRespawnScreen.Decode(r); err != nil {
-		return nil, err
+	if j.EnableRespawnScreen, err = r.ReadBool(); err != nil {
+		return err
 	}
 
-	return j, nil
+	return nil
 }
 
 type PluginMessagePacket struct {
-	Channel enc.String
-	Data    []byte
+	Channel *ResourceLocation
+	Data    *PacketBuffer
 }
 
-func (PluginMessagePacket) String() string {
+func (*PluginMessagePacket) String() string {
 	return "PluginMessage"
 }
 
-func (PluginMessagePacket) Info() PacketInfo {
+func (*PluginMessagePacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x19,
 		Direction:       ClientBound,
@@ -131,38 +123,42 @@ func (PluginMessagePacket) Info() PacketInfo {
 	}
 }
 
-func (p PluginMessagePacket) Marshal() ([]byte, error) {
-	buffer := new(bytes.Buffer)
-
-	if err := p.Channel.Encode(buffer); err != nil {
-		return nil, err
+func (p *PluginMessagePacket) Marshal(w PacketWriter) error {
+	if err := w.WriteResourceLocation(p.Channel); err != nil {
+		return err
 	}
 
-	if _, err := buffer.Write(p.Data); err != nil {
-		return nil, err
+	if err := w.WriteBytes(p.Data); err != nil {
+		return err
 	}
 
-	return buffer.Bytes(), nil
+	return nil
 }
 
-func (PluginMessagePacket) Unmarshal(io.Reader) (Packet, error) {
-	panic("implement me")
+func (p *PluginMessagePacket) Unmarshal(r PacketReader) error {
+	var err error
+
+	if p.Channel, err = r.ReadResourceLocation(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-type ClientSettingsPacket struct {
-	Locale             enc.String
-	ViewDistance       enc.Byte
-	ChatMode           enc.VarInt
-	ChatColors         enc.Bool
-	DisplayedSkinParts enc.UnsignedByte
-	MainHand           enc.VarInt
+type CClientSettingsPacket struct {
+	Lang               string
+	ViewDistance       int8
+	ChatVisibility     int32
+	EnableChatColors   bool
+	DisplayedSkinParts uint8
+	MainHand           int32
 }
 
-func (ClientSettingsPacket) String() string {
+func (*CClientSettingsPacket) String() string {
 	return "ClientSettings"
 }
 
-func (ClientSettingsPacket) Info() PacketInfo {
+func (*CClientSettingsPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x05,
 		Direction:       ServerBound,
@@ -170,81 +166,79 @@ func (ClientSettingsPacket) Info() PacketInfo {
 	}
 }
 
-func (cs ClientSettingsPacket) Marshal() ([]byte, error) {
-	buffer := new(bytes.Buffer)
-
-	if err := cs.Locale.Encode(buffer); err != nil {
-		return nil, err
+func (cs *CClientSettingsPacket) Marshal(w PacketWriter) error {
+	if err := w.WriteString(cs.Lang); err != nil {
+		return err
 	}
 
-	if err := cs.ViewDistance.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteByte(cs.ViewDistance); err != nil {
+		return err
 	}
 
-	if err := cs.ChatMode.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteVarInt(cs.ChatVisibility); err != nil {
+		return err
 	}
 
-	if err := cs.ChatColors.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteBool(cs.EnableChatColors); err != nil {
+		return err
 	}
 
-	if err := cs.DisplayedSkinParts.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteUnsignedByte(cs.DisplayedSkinParts); err != nil {
+		return err
 	}
 
-	if err := cs.MainHand.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteVarInt(cs.MainHand); err != nil {
+		return err
 	}
 
-	return buffer.Bytes(), nil
+	return nil
 }
 
-func (ClientSettingsPacket) Unmarshal(r io.Reader) (Packet, error) {
-	cs := &ClientSettingsPacket{}
+func (cs *CClientSettingsPacket) Unmarshal(r PacketReader) error {
+	var err error
 
-	if err := cs.Locale.Decode(r); err != nil {
-		return nil, err
+	if cs.Lang, err = r.ReadString(16); err != nil {
+		return err
 	}
 
-	if err := cs.ViewDistance.Decode(r); err != nil {
-		return nil, err
+	if cs.ViewDistance, err = r.ReadByte(); err != nil {
+		return err
 	}
 
-	if err := cs.ChatMode.Decode(r); err != nil {
-		return nil, err
+	if cs.ChatVisibility, err = r.ReadVarInt(); err != nil {
+		return err
 	}
 
-	if err := cs.ChatColors.Decode(r); err != nil {
-		return nil, err
+	if cs.EnableChatColors, err = r.ReadBool(); err != nil {
+		return err
 	}
 
-	if err := cs.DisplayedSkinParts.Decode(r); err != nil {
-		return nil, err
+	if cs.DisplayedSkinParts, err = r.ReadUnsignedByte(); err != nil {
+		return err
 	}
 
-	if err := cs.MainHand.Decode(r); err != nil {
-		return nil, err
+	if cs.MainHand, err = r.ReadVarInt(); err != nil {
+		return err
 	}
 
-	return cs, nil
+	return nil
 }
 
-type PlayerPositionAndLookPacket struct {
-	X          enc.Double
-	Y          enc.Double
-	Z          enc.Double
-	Yaw        enc.Float
-	Pitch      enc.Float
-	Flags      enc.Byte
-	TeleportID enc.VarInt
+type SPlayerPositionLookPacket struct {
+	X          float64
+	Y          float64
+	Z          float64
+	Yaw        float32
+	Pitch      float32
+	Flags      uint8
+	TeleportID int32
 }
 
-func (PlayerPositionAndLookPacket) String() string {
+func (*SPlayerPositionLookPacket) String() string {
 	return "PlayerPositionAndLook"
 }
 
-func (PlayerPositionAndLookPacket) Info() PacketInfo {
+func (*SPlayerPositionLookPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x36,
 		Direction:       ClientBound,
@@ -252,70 +246,68 @@ func (PlayerPositionAndLookPacket) Info() PacketInfo {
 	}
 }
 
-func (p PlayerPositionAndLookPacket) Marshal() ([]byte, error) {
-	buffer := new(bytes.Buffer)
-
-	if err := p.X.Encode(buffer); err != nil {
-		return nil, err
+func (p *SPlayerPositionLookPacket) Marshal(w PacketWriter) error {
+	if err := w.WriteDouble(p.X); err != nil {
+		return err
 	}
 
-	if err := p.Y.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteDouble(p.Y); err != nil {
+		return err
 	}
 
-	if err := p.Z.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteDouble(p.Z); err != nil {
+		return err
 	}
 
-	if err := p.Yaw.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteFloat(p.Yaw); err != nil {
+		return err
 	}
 
-	if err := p.Pitch.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteFloat(p.Pitch); err != nil {
+		return err
 	}
 
-	if err := p.Flags.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteUnsignedByte(p.Flags); err != nil {
+		return err
 	}
 
-	if err := p.TeleportID.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteVarInt(p.TeleportID); err != nil {
+		return err
 	}
 
-	return buffer.Bytes(), nil
+	return nil
 }
 
-func (PlayerPositionAndLookPacket) Unmarshal(r io.Reader) (Packet, error) {
-	p := &PlayerPositionAndLookPacket{}
+func (p *SPlayerPositionLookPacket) Unmarshal(r PacketReader) error {
+	var err error
 
-	if err := p.X.Decode(r); err != nil {
-		return nil, err
+	if p.X, err = r.ReadDouble(); err != nil {
+		return err
 	}
 
-	if err := p.Y.Decode(r); err != nil {
-		return nil, err
+	if p.Y, err = r.ReadDouble(); err != nil {
+		return err
 	}
 
-	if err := p.Z.Decode(r); err != nil {
-		return nil, err
+	if p.Z, err = r.ReadDouble(); err != nil {
+		return err
 	}
 
-	if err := p.Yaw.Decode(r); err != nil {
-		return nil, err
+	if p.Yaw, err = r.ReadFloat(); err != nil {
+		return err
 	}
 
-	if err := p.Pitch.Decode(r); err != nil {
-		return nil, err
+	if p.Pitch, err = r.ReadFloat(); err != nil {
+		return err
 	}
 
-	if err := p.Flags.Decode(r); err != nil {
-		return nil, err
+	if p.Flags, err = r.ReadUnsignedByte(); err != nil {
+		return err
 	}
 
-	if err := p.TeleportID.Decode(r); err != nil {
-		return nil, err
+	if p.TeleportID, err = r.ReadVarInt(); err != nil {
+		return err
 	}
 
-	return p, nil
+	return nil
 }

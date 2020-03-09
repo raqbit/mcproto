@@ -8,7 +8,7 @@ import (
 
 func TestWriteLong(t *testing.T) {
 	tests := []struct {
-		Value    Long
+		Value    int64
 		Expected []byte
 	}{
 		{Value: 0, Expected: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
@@ -31,7 +31,7 @@ func TestWriteLong(t *testing.T) {
 
 func TestReadLong(t *testing.T) {
 	tests := []struct {
-		Expected Long
+		Expected int64
 		Value    []byte
 	}{
 		{Expected: 0, Value: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},

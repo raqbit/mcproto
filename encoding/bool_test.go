@@ -7,7 +7,7 @@ import (
 
 func TestWriteBool(t *testing.T) {
 	tests := []struct {
-		Value    Bool
+		Value    bool
 		Expected []byte
 	}{
 		{Value: true, Expected: []byte{0x01}},
@@ -26,7 +26,7 @@ func TestWriteBool(t *testing.T) {
 
 func TestReadBool(t *testing.T) {
 	tests := []struct {
-		Expected Bool
+		Expected bool
 		Value    []byte
 	}{
 		{Expected: true, Value: []byte{0x01}},

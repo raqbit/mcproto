@@ -52,17 +52,18 @@ func NewConnection(rw io.ReadWriteCloser, side ConnectionSide) *Connection {
 		packets: make(map[PacketInfo]Packet),
 	}
 
-	conn.registerPacket(HandshakePacket{})
-	conn.registerPacket(RequestPacket{})
-	conn.registerPacket(ResponsePacket{})
-	conn.registerPacket(PingPacket{})
-	conn.registerPacket(PongPacket{})
-	conn.registerPacket(DisconnectPacket{})
-	conn.registerPacket(LoginStartPacket{})
-	conn.registerPacket(LoginSuccessPacket{})
-	conn.registerPacket(JoinGamePacket{})
-	conn.registerPacket(ClientSettingsPacket{})
-	conn.registerPacket(PlayerPositionAndLookPacket{})
+	// FIXME: DO NOT use the same packet instance for each unmarshal
+	conn.registerPacket(&CHandshakePacket{})
+	conn.registerPacket(&CServerQueryPacket{})
+	conn.registerPacket(&SServerInfoPacket{})
+	conn.registerPacket(&CPingPacket{})
+	conn.registerPacket(&SPongPacket{})
+	conn.registerPacket(&SDisconnectLoginPacket{})
+	conn.registerPacket(&CLoginStartPacket{})
+	conn.registerPacket(&SLoginSuccessPacket{})
+	conn.registerPacket(&SJoinGamePacket{})
+	conn.registerPacket(&CClientSettingsPacket{})
+	conn.registerPacket(&SPlayerPositionLookPacket{})
 
 	return conn
 }
@@ -86,26 +87,25 @@ func (c *Connection) ReadPacket() (Packet, error) {
 		return nil, ErrInvalidPacketLength
 	}
 
+	// Read complete packet into memory
 	data := make([]byte, length)
-
-	// Create reader from packet bytes
-	dataReader := bytes.NewReader(data)
-
-	// Read complete packet into data slice
 	_, err = io.ReadFull(c.rw, data)
+
+	// Create packetbuffer from data
+	packetBuffer := NewPacketReader(bytes.NewReader(data))
 
 	if err != nil {
 		return nil, fmt.Errorf("could not read packet data: %w", err)
 	}
 
-	pID, err := enc.ReadVarInt(dataReader)
+	pID, err := packetBuffer.ReadVarInt()
 
 	if err != nil {
 		return nil, fmt.Errorf("could not decode packet ID: %w", err)
 	}
 
-	decoder, ok := c.packets[PacketInfo{
-		ID:              int(pID),
+	packet, ok := c.packets[PacketInfo{
+		ID:              pID,
 		Direction:       c.getReadDirection(),
 		ConnectionState: c.State,
 	}]
@@ -114,16 +114,16 @@ func (c *Connection) ReadPacket() (Packet, error) {
 		return nil, fmt.Errorf("unknown packet ID, direction: %s, state: %s, ID: %#x", c.getReadDirection(), c.State, pID)
 	}
 
-	log.Printf("[Recv] %s, %d: %s\n", c.State, pID, decoder.String())
+	log.Printf("[Recv] %s, %d: %s\n", c.State, pID, packet.String())
 
 	// Decode packet
-	decodedPacket, err := decoder.Unmarshal(dataReader)
+	err = packet.Unmarshal(packetBuffer)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not decode packet data: %w", err)
 	}
 
-	return decodedPacket, nil
+	return packet, nil
 }
 
 // Writes a packet to the connection
@@ -132,31 +132,28 @@ func (c *Connection) WritePacket(packetToWrite Packet) error {
 
 	log.Printf("[Send] %s, %d: %s\n", c.State, packetInfo.ID, packetToWrite.String())
 
-	idBuff := enc.WriteVarInt(enc.VarInt(packetInfo.ID))
+	buffer := new(bytes.Buffer)
+	packetBuffer := NewPacketBuffer(buffer)
 
-	data, err := packetToWrite.Marshal()
-
-	if err != nil {
-		return fmt.Errorf("could not encode packet data: %w", err)
+	// Write packet ID to buffer
+	if err := packetBuffer.WriteVarInt(packetInfo.ID); err != nil {
+		return fmt.Errorf("unable to write packet id to buffer: %w", err)
 	}
 
-	// Calculate packet length
-	packetLen := enc.VarInt(len(idBuff) + len(data))
-
-	// Write packet length to connection
-	if err = packetLen.Encode(c.rw); err != nil {
-		return fmt.Errorf("could not write packet length: %w", err)
+	// Write packet data to buffer
+	if err := packetToWrite.Marshal(packetBuffer); err != nil {
+		return fmt.Errorf("could not encode packet data: %w", err)
 	}
 
 	// TODO: handle case where less than x bytes were written
 
-	// Write packet ID to connection
-	if _, err = c.rw.Write(idBuff); err != nil {
-		return fmt.Errorf("could not write packet id: %w", err)
+	// Write packet length to connection
+	if _, err := c.rw.Write(enc.WriteVarInt(int32(buffer.Len()))); err != nil {
+		return fmt.Errorf("could not write packet length: %w", err)
 	}
 
-	// Write packet data to connection
-	if _, err = c.rw.Write(data); err != nil {
+	// Write buffer to connection
+	if _, err := buffer.WriteTo(c.rw); err != nil {
 		return fmt.Errorf("could not write packet data: %w", err)
 	}
 

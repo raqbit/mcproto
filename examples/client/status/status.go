@@ -1,10 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/Raqbit/mcproto"
-	enc "github.com/Raqbit/mcproto/encoding"
 	"log"
 	"net"
 	"os"
@@ -16,7 +16,7 @@ const (
 
 var (
 	ServerHost = flag.String("host", "", "server host")
-	ServerPort = flag.Int("port", 25565, "server port")
+	ServerPort = flag.Uint("port", 25565, "server port")
 )
 
 func main() {
@@ -35,10 +35,10 @@ func main() {
 
 	conn := mcproto.NewConnection(tcpConn, mcproto.ClientSide)
 
-	err = conn.WritePacket(mcproto.HandshakePacket{
+	err = conn.WritePacket(&mcproto.CHandshakePacket{
 		ProtoVer:   ProtocolVersion,
-		ServerAddr: enc.String(*ServerHost),
-		ServerPort: enc.UnsignedShort(*ServerPort),
+		ServerAddr: *ServerHost,
+		ServerPort: uint16(*ServerPort),
 		NextState:  mcproto.StatusState,
 	})
 
@@ -49,7 +49,7 @@ func main() {
 		log.Fatalf("could not write handshake packet: %s", err)
 	}
 
-	err = conn.WritePacket(mcproto.RequestPacket{})
+	err = conn.WritePacket(&mcproto.CServerQueryPacket{})
 
 	if err != nil {
 		log.Fatalf("could not write request packet: %s", err)
@@ -61,11 +61,13 @@ func main() {
 		log.Fatalf("could not read response packet: %s", err)
 	}
 
-	response, ok := packet.(*mcproto.ResponsePacket)
+	response, ok := packet.(*mcproto.SServerInfoPacket)
 
 	if !ok {
 		log.Fatalf("Server sent unexpected packet: %s", packet.String())
 	}
 
-	fmt.Println(response.Json)
+	jsonRes, _ := json.Marshal(response.Response)
+
+	fmt.Println(string(jsonRes))
 }

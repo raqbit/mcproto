@@ -15,49 +15,28 @@ var (
 	ErrVarIntTooLarge = errors.New("VarInt too large")
 )
 
-// Minecraft Protocol VarInt type
-type VarInt int32
-
-func (vi *VarInt) Decode(r io.Reader) error {
-	i, err := ReadVarInt(r)
-
-	if err != nil {
-		return err
-	}
-
-	*vi = i
-	return nil
-}
-
-func (vi *VarInt) Encode(w io.Writer) error {
-	_, err := w.Write(WriteVarInt(*vi))
-	return err
-}
-
-// WriteVarInt writes the passed VarInt encoded integer to the writer.
-func WriteVarInt(value VarInt) []byte {
+func WriteVarInt(value int32) []byte {
 	buf := make([]byte, 0)
 	for cont := true; cont; cont = value != 0 {
 		temp := byte(value & 0x7F)
 
 		// Casting value to a uint to get a logical shift
-		value = VarInt(uint32(value) >> 7)
+		value = int32(uint32(value) >> 7)
 
 		if value != 0 {
 			temp |= 0x80
 		}
 
-		buf = append(buf, WriteUnsignedByte(UnsignedByte(temp))[0])
+		buf = append(buf, WriteUnsignedByte(temp)[0])
 	}
 
 	return buf
 }
 
-// ReadVarInt reads a VarInt encoded integer from the reader.
-func ReadVarInt(r io.Reader) (VarInt, error) {
+func ReadVarInt(r io.Reader) (int32, error) {
 	var numRead uint
 	var result int32
-	var read UnsignedByte
+	var read uint8
 
 	for cont := true; cont; cont = (read & 0x80) != 0 {
 		var err error
@@ -78,5 +57,5 @@ func ReadVarInt(r io.Reader) (VarInt, error) {
 		}
 	}
 
-	return VarInt(result), nil
+	return result, nil
 }

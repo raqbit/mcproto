@@ -8,7 +8,7 @@ import (
 
 func TestWriteFloat(t *testing.T) {
 	tests := []struct {
-		Value    Float
+		Value    float32
 		Expected []byte
 	}{
 		{Value: 0.0000000002, Expected: []byte{0x2F, 0x5B, 0xE6, 0xFF}},
@@ -28,7 +28,7 @@ func TestWriteFloat(t *testing.T) {
 
 func TestReadFloat(t *testing.T) {
 	tests := []struct {
-		Expected Float
+		Expected float32
 		Value    []byte
 	}{
 		{Expected: 0.0000000002, Value: []byte{0x2F, 0x5B, 0xE6, 0xFF}},

@@ -23,6 +23,6 @@ type Players struct {
 type ServerInfo struct {
 	Version     Version       `json:"version"`           // Server version info
 	Players     Players       `json:"players"`           // Server player info
-	Description ChatComponent `json:"description"`       // Server description
+	Description TextComponent `json:"description"`       // Server description
 	Favicon     string        `json:"favicon,omitempty"` // Server favicon
 }
