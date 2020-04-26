@@ -8,7 +8,7 @@ import (
 
 func TestWriteByte(t *testing.T) {
 	tests := []struct {
-		Value    int8
+		Value    byte
 		Expected []byte
 	}{
 		{Value: math.MinInt8, Expected: []byte{0x80}},
@@ -29,7 +29,7 @@ func TestWriteByte(t *testing.T) {
 
 func TestReadByte(t *testing.T) {
 	tests := []struct {
-		Expected int8
+		Expected byte
 		Value    []byte
 	}{
 		{Expected: math.MinInt8, Value: []byte{0x80}},
