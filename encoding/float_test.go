@@ -2,14 +2,13 @@ package encoding
 
 import (
 	"bytes"
-	"io"
 	"math"
 	"testing"
 )
 
 func TestWriteFloat(t *testing.T) {
 	tests := []struct {
-		Value    Float
+		Value    float32
 		Expected []byte
 	}{
 		{Value: 0.0000000002, Expected: []byte{0x2F, 0x5B, 0xE6, 0xFF}},
@@ -17,28 +16,19 @@ func TestWriteFloat(t *testing.T) {
 		{Value: math.MaxFloat32, Expected: []byte{0x7f, 0x7f, 0xff, 0xff}},
 	}
 
-	var buff bytes.Buffer
-	_ = io.Writer(&buff)
-
 	for _, test := range tests {
-		err := WriteFloat(&buff, test.Value)
+		actual := WriteFloat(test.Value)
 
-		if err != nil {
-			t.Error(err)
-		}
-
-		if bytes.Compare(test.Expected, buff.Bytes()) != 0 {
+		if bytes.Compare(test.Expected, actual) != 0 {
 			// Not equal
-			t.Errorf("Unable to convert %f: %v != %v", test.Value, buff.Bytes(), test.Expected)
+			t.Errorf("Unable to convert %f: %v != %v", test.Value, actual, test.Expected)
 		}
-
-		buff.Reset()
 	}
 }
 
 func TestReadFloat(t *testing.T) {
 	tests := []struct {
-		Expected Float
+		Expected float32
 		Value    []byte
 	}{
 		{Expected: 0.0000000002, Value: []byte{0x2F, 0x5B, 0xE6, 0xFF}},
@@ -47,7 +37,6 @@ func TestReadFloat(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	_ = io.Writer(&buff)
 
 	for _, test := range tests {
 

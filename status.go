@@ -1,15 +1,13 @@
 package mcproto
 
 import (
-	"bytes"
-	enc "github.com/Raqbit/mcproto/encoding"
-	"io"
+	"encoding/json"
 )
 
 // https://wiki.vg/Protocol#Request
-type RequestPacket struct{}
+type CServerQueryPacket struct{}
 
-func (r RequestPacket) Info() PacketInfo {
+func (r CServerQueryPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x00,
 		Direction:       ServerBound,
@@ -17,24 +15,24 @@ func (r RequestPacket) Info() PacketInfo {
 	}
 }
 
-func (RequestPacket) String() string {
-	return "Request"
+func (*CServerQueryPacket) String() string {
+	return "ServerQuery"
 }
 
-func (RequestPacket) Marshal() ([]byte, error) {
-	return nil, nil
+func (*CServerQueryPacket) Marshal(_ PacketWriter) error {
+	return nil
 }
 
-func (RequestPacket) Unmarshal(_ io.Reader) (Packet, error) {
-	return &RequestPacket{}, nil
+func (*CServerQueryPacket) Unmarshal(_ PacketReader) error {
+	return nil
 }
 
 // https://wiki.vg/Protocol#Response
-type ResponsePacket struct {
-	Json enc.String
+type SServerInfoPacket struct {
+	Response ServerInfo
 }
 
-func (r ResponsePacket) Info() PacketInfo {
+func (*SServerInfoPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x00,
 		Direction:       ClientBound,
@@ -42,36 +40,46 @@ func (r ResponsePacket) Info() PacketInfo {
 	}
 }
 
-func (ResponsePacket) String() string {
-	return "Response"
+func (*SServerInfoPacket) String() string {
+	return "ServerInfo"
 }
 
-func (r ResponsePacket) Marshal() ([]byte, error) {
-	buffer := new(bytes.Buffer)
+func (si *SServerInfoPacket) Marshal(w PacketWriter) error {
+	var err error
+	var response []byte
 
-	if err := r.Json.Encode(buffer); err != nil {
-		return nil, err
+	if response, err = json.Marshal(si.Response); err != nil {
+		return err
 	}
 
-	return buffer.Bytes(), nil
+	if err := w.WriteString(string(response)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (ResponsePacket) Unmarshal(r io.Reader) (Packet, error) {
-	rp := &ResponsePacket{}
+func (si *SServerInfoPacket) Unmarshal(r PacketReader) error {
+	var err error
+	var response string
 
-	if err := rp.Json.Decode(r); err != nil {
-		return nil, err
+	if response, err = r.ReadMaxString(); err != nil {
+		return err
 	}
 
-	return rp, nil
+	if err = json.Unmarshal([]byte(response), &si.Response); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // https://wiki.vg/Protocol#Ping
-type PingPacket struct {
-	Payload enc.Long
+type CPingPacket struct {
+	Payload int64
 }
 
-func (p PingPacket) Info() PacketInfo {
+func (*CPingPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x01,
 		Direction:       ServerBound,
@@ -79,36 +87,34 @@ func (p PingPacket) Info() PacketInfo {
 	}
 }
 
-func (PingPacket) String() string {
+func (*CPingPacket) String() string {
 	return "Ping"
 }
 
-func (p PingPacket) Marshal() ([]byte, error) {
-	buffer := new(bytes.Buffer)
-
-	if err := p.Payload.Encode(buffer); err != nil {
-		return nil, err
+func (p *CPingPacket) Marshal(w PacketWriter) error {
+	if err := w.WriteLong(p.Payload); err != nil {
+		return err
 	}
 
-	return buffer.Bytes(), nil
+	return nil
 }
 
-func (PingPacket) Unmarshal(r io.Reader) (Packet, error) {
-	pp := &PingPacket{}
+func (p *CPingPacket) Unmarshal(r PacketReader) error {
+	var err error
 
-	if err := pp.Payload.Decode(r); err != nil {
-		return nil, err
+	if p.Payload, err = r.ReadLong(); err != nil {
+		return err
 	}
 
-	return pp, nil
+	return nil
 }
 
 // https://wiki.vg/Protocol#Pong
-type PongPacket struct {
-	Payload enc.Long
+type SPongPacket struct {
+	Payload int64
 }
 
-func (p PongPacket) Info() PacketInfo {
+func (*SPongPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x01,
 		Direction:       ClientBound,
@@ -116,26 +122,24 @@ func (p PongPacket) Info() PacketInfo {
 	}
 }
 
-func (PongPacket) String() string {
+func (*SPongPacket) String() string {
 	return "Pong"
 }
 
-func (p PongPacket) Marshal() ([]byte, error) {
-	buffer := new(bytes.Buffer)
-
-	if err := p.Payload.Encode(buffer); err != nil {
-		return nil, err
+func (p *SPongPacket) Marshal(w PacketWriter) error {
+	if err := w.WriteLong(p.Payload); err != nil {
+		return err
 	}
 
-	return buffer.Bytes(), nil
+	return nil
 }
 
-func (PongPacket) Unmarshal(r io.Reader) (Packet, error) {
-	pp := &PongPacket{}
+func (p *SPongPacket) Unmarshal(r PacketReader) error {
+	var err error
 
-	if err := pp.Payload.Decode(r); err != nil {
-		return nil, err
+	if p.Payload, err = r.ReadLong(); err != nil {
+		return err
 	}
 
-	return pp, nil
+	return nil
 }

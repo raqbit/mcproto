@@ -2,13 +2,12 @@ package encoding
 
 import (
 	"bytes"
-	"io"
 	"testing"
 )
 
 func TestWriteVarInt(t *testing.T) {
 	tests := []struct {
-		Value    VarInt
+		Value    int32
 		Expected []byte
 	}{
 		{Value: 0, Expected: []byte{0x00}},
@@ -18,28 +17,20 @@ func TestWriteVarInt(t *testing.T) {
 		{Value: -2147483648, Expected: []byte{0x80, 0x80, 0x80, 0x80, 0x08}},
 	}
 
-	var buff bytes.Buffer
-	_ = io.Writer(&buff)
-
 	for _, test := range tests {
-		err := WriteVarInt(&buff, test.Value)
+		actual := WriteVarInt(test.Value)
 
-		if err != nil {
-			t.Error(err)
-		}
-
-		if bytes.Compare(test.Expected, buff.Bytes()) != 0 {
+		if bytes.Compare(test.Expected, actual) != 0 {
 			// Not equal
-			t.Errorf("Unable to convert %d: %v != %v", test.Value, buff.Bytes(), test.Expected)
+			t.Errorf("Unable to convert %d: %v != %v", test.Value, actual, test.Expected)
 		}
 
-		buff.Reset()
 	}
 }
 
 func TestReadVarInt(t *testing.T) {
 	tests := []struct {
-		Expected VarInt
+		Expected int32
 		Value    []byte
 	}{
 		{Expected: 0, Value: []byte{0x00}},
@@ -49,7 +40,6 @@ func TestReadVarInt(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	_ = io.Writer(&buff)
 
 	for _, test := range tests {
 		buff.Write(test.Value)
@@ -68,4 +58,3 @@ func TestReadVarInt(t *testing.T) {
 		buff.Reset()
 	}
 }
-

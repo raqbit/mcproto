@@ -1,20 +1,14 @@
 package mcproto
 
-import (
-	"bytes"
-	enc "github.com/Raqbit/mcproto/encoding"
-	"io"
-)
-
 // https://wiki.vg/Protocol#Handshake
-type HandshakePacket struct {
-	ProtoVer   enc.VarInt
-	ServerAddr enc.String
-	ServerPort enc.UnsignedShort
-	NextState  enc.VarInt
+type CHandshakePacket struct {
+	ProtoVer   int32
+	ServerAddr string
+	ServerPort uint16
+	NextState  ConnectionState
 }
 
-func (h HandshakePacket) Info() PacketInfo {
+func (h *CHandshakePacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x00,
 		Direction:       ServerBound,
@@ -22,50 +16,50 @@ func (h HandshakePacket) Info() PacketInfo {
 	}
 }
 
-func (HandshakePacket) String() string {
+func (*CHandshakePacket) String() string {
 	return "Handshake"
 }
 
-func (h HandshakePacket) Marshal() ([]byte, error) {
-	buffer := new(bytes.Buffer)
-
-	if err := h.ProtoVer.Encode(buffer); err != nil {
-		return nil, err
+func (h *CHandshakePacket) Marshal(w PacketWriter) error {
+	if err := w.WriteVarInt(h.ProtoVer); err != nil {
+		return err
 	}
 
-	if err := h.ServerAddr.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteString(h.ServerAddr); err != nil {
+		return err
 	}
 
-	if err := h.ServerPort.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteUnsignedShort(h.ServerPort); err != nil {
+		return err
 	}
 
-	if err := h.NextState.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteVarInt(int32(h.NextState)); err != nil {
+		return err
 	}
 
-	return buffer.Bytes(), nil
+	return nil
 }
 
-func (HandshakePacket) Unmarshal(r io.Reader) (Packet, error) {
-	h := &HandshakePacket{}
+func (h *CHandshakePacket) Unmarshal(r PacketReader) error {
+	var err error
 
-	if err := h.ProtoVer.Decode(r); err != nil {
-		return nil, err
+	if h.ProtoVer, err = r.ReadVarInt(); err != nil {
+		return err
 	}
 
-	if err := h.ServerAddr.Decode(r); err != nil {
-		return nil, err
+	if h.ServerAddr, err = r.ReadString(255); err != nil {
+		return err
 	}
 
-	if err := h.ServerPort.Decode(r); err != nil {
-		return nil, err
+	if h.ServerPort, err = r.ReadUnsignedShort(); err != nil {
+		return err
 	}
 
-	if err := h.NextState.Decode(r); err != nil {
-		return nil, err
+	var nextState int32
+	if nextState, err = r.ReadVarInt(); err != nil {
+		return err
 	}
+	h.NextState = ConnectionState(nextState)
 
-	return h, nil
+	return nil
 }

@@ -2,14 +2,13 @@ package encoding
 
 import (
 	"bytes"
-	"io"
 	"math"
 	"testing"
 )
 
 func TestWriteDouble(t *testing.T) {
 	tests := []struct {
-		Value    Double
+		Value    float64
 		Expected []byte
 	}{
 		{Value: 0.0000000002, Expected: []byte{0x3D, 0xEB, 0x7C, 0xDF, 0xD9, 0xD7, 0xBD, 0xBB}},
@@ -17,28 +16,19 @@ func TestWriteDouble(t *testing.T) {
 		{Value: math.MaxFloat64, Expected: []byte{0x7F, 0xEF, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
 	}
 
-	var buff bytes.Buffer
-	_ = io.Writer(&buff)
-
 	for _, test := range tests {
-		err := WriteDouble(&buff, test.Value)
+		actual := WriteDouble(test.Value)
 
-		if err != nil {
-			t.Error(err)
-		}
-
-		if bytes.Compare(test.Expected, buff.Bytes()) != 0 {
+		if bytes.Compare(test.Expected, actual) != 0 {
 			// Not equal
-			t.Errorf("Unable to convert %f: %v != %v", test.Value, buff.Bytes(), test.Expected)
+			t.Errorf("Unable to convert %f: %v != %v", test.Value, actual, test.Expected)
 		}
-
-		buff.Reset()
 	}
 }
 
 func TestReadDouble(t *testing.T) {
 	tests := []struct {
-		Expected Double
+		Expected float64
 		Value    []byte
 	}{
 		{Expected: 0.0000000002, Value: []byte{0x3D, 0xEB, 0x7C, 0xDF, 0xD9, 0xD7, 0xBD, 0xBB}},
@@ -47,7 +37,6 @@ func TestReadDouble(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	_ = io.Writer(&buff)
 
 	for _, test := range tests {
 

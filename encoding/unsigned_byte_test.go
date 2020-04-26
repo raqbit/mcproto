@@ -2,14 +2,13 @@ package encoding
 
 import (
 	"bytes"
-	"io"
 	"math"
 	"testing"
 )
 
 func TestWriteUnsignedByte(t *testing.T) {
 	tests := []struct {
-		Value    UnsignedByte
+		Value    uint8
 		Expected []byte
 	}{
 		{Value: 0, Expected: []byte{0x00}},
@@ -18,28 +17,19 @@ func TestWriteUnsignedByte(t *testing.T) {
 		{Value: math.MaxUint8, Expected: []byte{0xff}},
 	}
 
-	var buff bytes.Buffer
-	_ = io.Writer(&buff)
-
 	for _, test := range tests {
-		err := WriteUnsignedByte(&buff, test.Value)
+		actual := WriteUnsignedByte(test.Value)
 
-		if err != nil {
-			t.Error(err)
-		}
-
-		if bytes.Compare(test.Expected, buff.Bytes()) != 0 {
+		if bytes.Compare(test.Expected, actual) != 0 {
 			// Not equal
-			t.Errorf("Unable to convert %d: %v != %v", test.Value, buff.Bytes(), test.Expected)
+			t.Errorf("Unable to convert %d: %v != %v", test.Value, actual, test.Expected)
 		}
-
-		buff.Reset()
 	}
 }
 
 func TestReadUnsignedByte(t *testing.T) {
 	tests := []struct {
-		Expected UnsignedByte
+		Expected uint8
 		Value    []byte
 	}{
 		{Expected: 0, Value: []byte{0x00}},
@@ -49,7 +39,6 @@ func TestReadUnsignedByte(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	_ = io.Writer(&buff)
 
 	for _, test := range tests {
 

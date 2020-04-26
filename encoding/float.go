@@ -3,34 +3,17 @@ package encoding
 import (
 	"encoding/binary"
 	"io"
+	"math"
 )
 
-// Minecraft Protocol Float type
-type Float float32
-
-func (l *Float) Decode(r io.Reader) error {
-	Float, err := ReadFloat(r)
-
-	if err != nil {
-		return err
-	}
-
-	*l = Float
-	return nil
+func WriteFloat(value float32) []byte {
+	buf := make([]byte, 4)
+	binary.BigEndian.PutUint32(buf, math.Float32bits(value))
+	return buf
 }
 
-func (l *Float) Encode(w io.Writer) error {
-	return WriteFloat(w, *l)
-}
-
-// WriteFloat writes the passed Float to the writer
-func WriteFloat(buff io.Writer, value Float) error {
-	return binary.Write(buff, binary.BigEndian, float32(value))
-}
-
-// ReadFloat reads a Float from the reader
-func ReadFloat(buff io.Reader) (Float, error) {
+func ReadFloat(buff io.Reader) (float32, error) {
 	var float float32
 	err := binary.Read(buff, binary.BigEndian, &float)
-	return Float(float), err
+	return float, err
 }

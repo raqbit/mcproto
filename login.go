@@ -1,17 +1,16 @@
 package mcproto
 
 import (
-	"bytes"
-	enc "github.com/Raqbit/mcproto/encoding"
-	"io"
+	"encoding/json"
+	"github.com/google/uuid"
 )
 
 // https://wiki.vg/Protocol#Login_Start
-type LoginStartPacket struct {
-	Name enc.String
+type CLoginStartPacket struct {
+	Profile *GameProfile
 }
 
-func (l LoginStartPacket) Info() PacketInfo {
+func (*CLoginStartPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x00,
 		Direction:       ServerBound,
@@ -19,36 +18,37 @@ func (l LoginStartPacket) Info() PacketInfo {
 	}
 }
 
-func (LoginStartPacket) String() string {
-	return "Login"
+func (*CLoginStartPacket) String() string {
+	return "LoginStart"
 }
 
-func (l LoginStartPacket) Marshal() ([]byte, error) {
-	buffer := new(bytes.Buffer)
-
-	if err := l.Name.Encode(buffer); err != nil {
-		return nil, err
+func (l *CLoginStartPacket) Marshal(w PacketWriter) error {
+	if err := w.WriteString(l.Profile.Name); err != nil {
+		return err
 	}
 
-	return buffer.Bytes(), nil
+	return nil
 }
 
-func (LoginStartPacket) Unmarshal(r io.Reader) (Packet, error) {
-	lp := &LoginStartPacket{}
+func (l *CLoginStartPacket) Unmarshal(r PacketReader) error {
+	var err error
+	var name string
 
-	if err := lp.Name.Decode(r); err != nil {
-		return nil, err
+	if name, err = r.ReadString(16); err != nil {
+		return err
 	}
 
-	return lp, nil
+	l.Profile = NewGameProfile(uuid.Nil, name)
+
+	return nil
 }
 
 // https://wiki.vg/Protocol#Disconnect_.28login.29
-type DisconnectPacket struct {
-	Reason enc.String
+type SDisconnectLoginPacket struct {
+	Reason TextComponent
 }
 
-func (d DisconnectPacket) Info() PacketInfo {
+func (*SDisconnectLoginPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x00,
 		Direction:       ClientBound,
@@ -56,37 +56,46 @@ func (d DisconnectPacket) Info() PacketInfo {
 	}
 }
 
-func (DisconnectPacket) String() string {
+func (*SDisconnectLoginPacket) String() string {
 	return "Disconnect"
 }
 
-func (d DisconnectPacket) Marshal() ([]byte, error) {
-	buffer := new(bytes.Buffer)
+func (d *SDisconnectLoginPacket) Marshal(w PacketWriter) error {
+	var err error
+	var reason []byte
 
-	if err := d.Reason.Encode(buffer); err != nil {
-		return nil, err
+	if reason, err = json.Marshal(d.Reason); err != nil {
+		return err
 	}
 
-	return buffer.Bytes(), nil
+	if err := w.WriteString(string(reason)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (DisconnectPacket) Unmarshal(r io.Reader) (Packet, error) {
-	dp := &DisconnectPacket{}
+func (d *SDisconnectLoginPacket) Unmarshal(r PacketReader) error {
+	var err error
+	var reason string
 
-	if err := dp.Reason.Decode(r); err != nil {
-		return nil, err
+	if reason, err = r.ReadMaxString(); err != nil {
+		return err
 	}
 
-	return dp, nil
+	if err = json.Unmarshal([]byte(reason), &d.Reason); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // https://wiki.vg/Protocol#Login_Success
-type LoginSuccessPacket struct {
-	UUID     enc.String
-	Username enc.String
+type SLoginSuccessPacket struct {
+	Profile *GameProfile
 }
 
-func (l LoginSuccessPacket) Info() PacketInfo {
+func (*SLoginSuccessPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x02,
 		Direction:       ClientBound,
@@ -94,34 +103,40 @@ func (l LoginSuccessPacket) Info() PacketInfo {
 	}
 }
 
-func (LoginSuccessPacket) String() string {
+func (*SLoginSuccessPacket) String() string {
 	return "LoginSuccess"
 }
 
-func (l LoginSuccessPacket) Marshal() ([]byte, error) {
-	buffer := new(bytes.Buffer)
-
-	if err := l.UUID.Encode(buffer); err != nil {
-		return nil, err
+func (l *SLoginSuccessPacket) Marshal(w PacketWriter) error {
+	if err := w.WriteString(l.Profile.UUID.String()); err != nil {
+		return err
 	}
 
-	if err := l.Username.Encode(buffer); err != nil {
-		return nil, err
+	if err := w.WriteString(l.Profile.Name); err != nil {
+		return err
 	}
 
-	return buffer.Bytes(), nil
+	return nil
 }
 
-func (LoginSuccessPacket) Unmarshal(r io.Reader) (Packet, error) {
-	lsp := &LoginSuccessPacket{}
+func (l *SLoginSuccessPacket) Unmarshal(r PacketReader) error {
+	var err error
+	var uuidStr string
+	var name string
 
-	if err := lsp.UUID.Decode(r); err != nil {
-		return nil, err
+	if uuidStr, err = r.ReadString(36); err != nil {
+		return err
 	}
 
-	if err := lsp.Username.Decode(r); err != nil {
-		return nil, err
+	if name, err = r.ReadString(16); err != nil {
+		return err
 	}
 
-	return lsp, nil
+	var parsedUUID uuid.UUID
+	if parsedUUID, err = uuid.Parse(uuidStr); err != nil {
+		return err
+	}
+	l.Profile = NewGameProfile(parsedUUID, name)
+
+	return nil
 }

@@ -2,11 +2,10 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/Raqbit/mcproto"
-	enc "github.com/Raqbit/mcproto/encoding"
+	"github.com/google/uuid"
 	"io"
 	"log"
 	"math"
@@ -68,46 +67,38 @@ func handleConnection(tcpConn net.Conn) {
 
 func handlePacket(conn *mcproto.Connection, p mcproto.Packet) error {
 	switch v := p.(type) {
-	case *mcproto.HandshakePacket:
+	case *mcproto.CHandshakePacket:
 		return handleHandshakePacket(conn, v)
-	case *mcproto.RequestPacket:
+	case *mcproto.CServerQueryPacket:
 		return handleRequestPacket(conn, v)
-	case *mcproto.PingPacket:
+	case *mcproto.CPingPacket:
 		return handlePingPacket(conn, v)
-	case *mcproto.LoginStartPacket:
+	case *mcproto.CLoginStartPacket:
 		return handleLoginPacket(conn, v)
-	case *mcproto.ClientSettingsPacket:
+	case *mcproto.CClientSettingsPacket:
 		return handleClientSettingsPacket(conn, v)
 	default:
 		return fmt.Errorf("unhandled packet: %s", p)
 	}
 }
 
-func handleClientSettingsPacket(conn *mcproto.Connection, v *mcproto.ClientSettingsPacket) error {
-	conn.WritePacket(mcproto.PlayerPositionAndLookPacket{
-		X:          0,
-		Y:          0,
-		Z:          0,
-		Yaw:        0,
-		Pitch:      0,
-		Flags:      0,
-		TeleportID: 0,
-	})
+func handleClientSettingsPacket(_ *mcproto.Connection, _ *mcproto.CClientSettingsPacket) error {
 	return nil
 }
 
-func handleLoginPacket(conn *mcproto.Connection, v *mcproto.LoginStartPacket) error {
+func handleLoginPacket(conn *mcproto.Connection, v *mcproto.CLoginStartPacket) error {
 	conn.State = mcproto.PlayState
-	err := conn.WritePacket(mcproto.LoginSuccessPacket{UUID: "f2bf38cd-0073-4703-94fa-d49d406a4885", Username: v.Name})
+	playerUuid, _ := uuid.NewRandom()
+	err := conn.WritePacket(&mcproto.SLoginSuccessPacket{Profile: mcproto.NewGameProfile(playerUuid, "Raqbit")})
 
 	if err != nil {
 		return fmt.Errorf("could not write login success packet: %w", err)
 	}
 
-	err = conn.WritePacket(mcproto.JoinGamePacket{
-		EntityID:            enc.Int(genRandomEid()),
+	err = conn.WritePacket(&mcproto.SJoinGamePacket{
+		PlayerID:            genRandomEid(),
 		GameMode:            1,
-		Dimension:           enc.Int(0),
+		Dimension:           0,
 		HashedSeed:          0,
 		MaxPlayers:          10,
 		LevelType:           "flat",
@@ -120,28 +111,45 @@ func handleLoginPacket(conn *mcproto.Connection, v *mcproto.LoginStartPacket) er
 		return fmt.Errorf("could not write join game packet: %w", err)
 	}
 
-	buffer := new(bytes.Buffer)
+	data := mcproto.NewPacketBuffer(new(bytes.Buffer))
+	err = data.WriteString("Raqbit custom")
 
-	enc.WriteString(buffer, "Raqbit custom")
+	if err != nil {
+		return fmt.Errorf("could not write channel data")
+	}
 
-	err = conn.WritePacket(mcproto.PluginMessagePacket{
-		Channel: "minecraft:brand",
-		Data:    buffer.Bytes(),
+	err = conn.WritePacket(&mcproto.PluginMessagePacket{
+		Channel: mcproto.NewResourceLocation("minecraft", "brand"),
+		Data:    data,
 	})
 
 	if err != nil {
 		return fmt.Errorf("could not write brand packet: %w", err)
 	}
 
+	err = conn.WritePacket(&mcproto.SPlayerPositionLookPacket{
+		X:          0,
+		Y:          0,
+		Z:          0,
+		Yaw:        0,
+		Pitch:      0,
+		Flags:      0,
+		TeleportID: 0,
+	})
+
+	if err != nil {
+		return fmt.Errorf("could not write player posision and look packet: %w", err)
+	}
+
 	return nil
 }
 
-func handlePingPacket(conn *mcproto.Connection, v *mcproto.PingPacket) error {
-	return conn.WritePacket(mcproto.PongPacket{Payload: v.Payload})
+func handlePingPacket(conn *mcproto.Connection, v *mcproto.CPingPacket) error {
+	return conn.WritePacket(&mcproto.SPongPacket{Payload: v.Payload})
 }
 
-func handleRequestPacket(conn *mcproto.Connection, _ *mcproto.RequestPacket) error {
-	status := &mcproto.ServerInfo{
+func handleRequestPacket(conn *mcproto.Connection, _ *mcproto.CServerQueryPacket) error {
+	status := mcproto.ServerInfo{
 		Version: mcproto.Version{
 			Name:     "raqbit-custom",
 			Protocol: ProtocolVersion,
@@ -151,20 +159,14 @@ func handleRequestPacket(conn *mcproto.Connection, _ *mcproto.RequestPacket) err
 			Online: 69,
 			Sample: []mcproto.Player{},
 		},
-		Description: mcproto.ChatComponent{
+		Description: mcproto.TextComponent{
 			Text:  ":partyparrot:",
 			Color: "green",
 		},
 	}
 
-	jsonStatus, err := json.Marshal(status)
-
-	if err != nil {
-		return fmt.Errorf("could not marshal server info: %w", err)
-	}
-
-	err = conn.WritePacket(mcproto.ResponsePacket{
-		Json: enc.String(jsonStatus),
+	err := conn.WritePacket(&mcproto.SServerInfoPacket{
+		Response: status,
 	})
 
 	if err != nil {
@@ -174,7 +176,7 @@ func handleRequestPacket(conn *mcproto.Connection, _ *mcproto.RequestPacket) err
 	return nil
 }
 
-func handleHandshakePacket(conn *mcproto.Connection, p *mcproto.HandshakePacket) error {
+func handleHandshakePacket(conn *mcproto.Connection, p *mcproto.CHandshakePacket) error {
 	if p.ProtoVer != ProtocolVersion {
 		return fmt.Errorf("unsupported protocol version: %d", p.ProtoVer)
 	}
@@ -182,7 +184,7 @@ func handleHandshakePacket(conn *mcproto.Connection, p *mcproto.HandshakePacket)
 	if p.NextState != mcproto.StatusState && p.NextState != mcproto.LoginState {
 		return fmt.Errorf("handshake packet with invalid next state")
 	} else {
-		conn.State = mcproto.ConnectionState(p.NextState)
+		conn.State = p.NextState
 		return nil
 	}
 }
