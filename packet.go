@@ -37,7 +37,7 @@ type (
 		ReadVarInt() (int32, error)
 		ReadInt() (int32, error)
 		ReadUnsignedShort() (uint16, error)
-		ReadByte() (byte, error)
+		ReadByte() (int8, error)
 		ReadUnsignedByte() (uint8, error)
 		ReadBool() (bool, error)
 	}
@@ -54,7 +54,7 @@ type (
 		WriteVarInt(value int32) error
 		WriteInt(value int32) error
 		WriteUnsignedShort(value uint16) error
-		WriteByte(value byte) error
+		WriteByte(value int8) error
 		WriteUnsignedByte(value uint8) error
 		WriteBool(value bool) error
 	}
@@ -124,7 +124,7 @@ func (b *PacketBuffer) WriteDouble(value float64) error {
 	return err
 }
 
-func (b *PacketBuffer) WriteByte(value byte) error {
+func (b *PacketBuffer) WriteByte(value int8) error {
 	_, err := b.w.Write(enc.WriteByte(value))
 	return err
 }
@@ -214,7 +214,7 @@ func (b *PacketBuffer) ReadBytes(maxLength int64) (PacketReader, error) {
 	return NewPacketBuffer(&buff), nil
 }
 
-func (b *PacketBuffer) ReadByte() (byte, error) {
+func (b *PacketBuffer) ReadByte() (int8, error) {
 	return enc.ReadByte(b.r)
 }
 
