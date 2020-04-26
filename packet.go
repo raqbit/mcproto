@@ -11,39 +11,63 @@ import (
 
 const MaxPacketLength = 1048576
 
-type PacketReader interface {
-	io.Reader
-	ReadBytes(maxLength int64) (PacketReader, error)
-	ReadResourceLocation() (*ResourceLocation, error)
-	ReadMaxString() (string, error)
-	ReadString(maxLength int32) (string, error)
-	ReadFloat() (float32, error)
-	ReadDouble() (float64, error)
-	ReadLong() (int64, error)
-	ReadVarInt() (int32, error)
-	ReadInt() (int32, error)
-	ReadUnsignedShort() (uint16, error)
-	ReadByte() (int8, error)
-	ReadUnsignedByte() (uint8, error)
-	ReadBool() (bool, error)
-}
+var (
+	ErrInvalidPacketLength = errors.New("packet has a malformed length")
+)
 
-type PacketWriter interface {
-	io.Writer
-	WriteBytes(data PacketReader) error
-	WriteResourceLocation(value *ResourceLocation) error
-	WriteString(value string) error
-	WriteFloat(value float32) error
-	WriteDouble(value float64) error
-	WriteLong(value int64) error
-	WriteVarInt(value int32) error
-	WriteInt(value int32) error
-	WriteUnsignedShort(value uint16) error
-	WriteByte(value int8) error
-	WriteUnsignedByte(value uint8) error
-	WriteBool(value bool) error
-}
+type (
+	// A packet type
+	Packet interface {
+		fmt.Stringer
+		Info() PacketInfo
+		Marshal(buf PacketWriter) error
+		Unmarshal(buf PacketReader) error
+	}
 
+	// A reader with functions for reading Minecraft protocol types
+	PacketReader interface {
+		io.Reader
+		ReadBytes(maxLength int64) (PacketReader, error)
+		ReadResourceLocation() (*ResourceLocation, error)
+		ReadMaxString() (string, error)
+		ReadString(maxLength int32) (string, error)
+		ReadFloat() (float32, error)
+		ReadDouble() (float64, error)
+		ReadLong() (int64, error)
+		ReadVarInt() (int32, error)
+		ReadInt() (int32, error)
+		ReadUnsignedShort() (uint16, error)
+		ReadByte() (byte, error)
+		ReadUnsignedByte() (uint8, error)
+		ReadBool() (bool, error)
+	}
+
+	// A writer with functions for writing Minecraft protocol types
+	PacketWriter interface {
+		io.Writer
+		WriteBytes(data PacketReader) error
+		WriteResourceLocation(value *ResourceLocation) error
+		WriteString(value string) error
+		WriteFloat(value float32) error
+		WriteDouble(value float64) error
+		WriteLong(value int64) error
+		WriteVarInt(value int32) error
+		WriteInt(value int32) error
+		WriteUnsignedShort(value uint16) error
+		WriteByte(value byte) error
+		WriteUnsignedByte(value uint8) error
+		WriteBool(value bool) error
+	}
+
+	// The info which identifies a packet
+	PacketInfo struct {
+		ID              int32
+		Direction       PacketDirection
+		ConnectionState ConnectionState
+	}
+)
+
+// A buffer containing packet data
 type PacketBuffer struct {
 	r io.Reader
 	w io.Writer
@@ -100,7 +124,7 @@ func (b *PacketBuffer) WriteDouble(value float64) error {
 	return err
 }
 
-func (b *PacketBuffer) WriteByte(value int8) error {
+func (b *PacketBuffer) WriteByte(value byte) error {
 	_, err := b.w.Write(enc.WriteByte(value))
 	return err
 }
@@ -190,25 +214,11 @@ func (b *PacketBuffer) ReadBytes(maxLength int64) (PacketReader, error) {
 	return NewPacketBuffer(&buff), nil
 }
 
-func (b *PacketBuffer) ReadByte() (int8, error) {
+func (b *PacketBuffer) ReadByte() (byte, error) {
 	return enc.ReadByte(b.r)
 }
 
-type PacketInfo struct {
-	ID              int32
-	Direction       PacketDirection
-	ConnectionState ConnectionState
-}
-
-// Packet which has been decoded into a struct.
-type Packet interface {
-	fmt.Stringer
-	Info() PacketInfo
-	Marshal(buf PacketWriter) error
-	Unmarshal(buf PacketReader) error
-}
-
-// The direction a packet
+// The direction of a packet
 type PacketDirection byte
 
 func (p PacketDirection) String() string {
@@ -223,8 +233,4 @@ func (p PacketDirection) String() string {
 const (
 	ClientBound PacketDirection = iota
 	ServerBound
-)
-
-var (
-	ErrInvalidPacketLength = errors.New("packet has a malformed length")
 )
