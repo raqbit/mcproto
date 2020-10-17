@@ -1,6 +1,6 @@
 package mcproto
 
-type SJoinGamePacket struct {
+type CJoinGamePacket struct {
 	PlayerID            int32
 	GameMode            uint8
 	Dimension           int32
@@ -12,11 +12,11 @@ type SJoinGamePacket struct {
 	EnableRespawnScreen bool
 }
 
-func (*SJoinGamePacket) String() string {
+func (*CJoinGamePacket) String() string {
 	return "JoinGame"
 }
 
-func (*SJoinGamePacket) Info() PacketInfo {
+func (*CJoinGamePacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x26,
 		Direction:       ClientBound,
@@ -24,7 +24,7 @@ func (*SJoinGamePacket) Info() PacketInfo {
 	}
 }
 
-func (j *SJoinGamePacket) Marshal(w PacketWriter) error {
+func (j *CJoinGamePacket) Marshal(w PacketWriter) error {
 	if err := w.WriteInt(j.PlayerID); err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (j *SJoinGamePacket) Marshal(w PacketWriter) error {
 	return nil
 }
 
-func (j *SJoinGamePacket) Unmarshal(r PacketReader) error {
+func (j *CJoinGamePacket) Unmarshal(r PacketReader) error {
 	var err error
 
 	if j.PlayerID, err = r.ReadInt(); err != nil {
@@ -106,16 +106,16 @@ func (j *SJoinGamePacket) Unmarshal(r PacketReader) error {
 	return nil
 }
 
-type PluginMessagePacket struct {
+type CPluginMessagePacket struct {
 	Channel *ResourceLocation
 	Data    *PacketBuffer
 }
 
-func (*PluginMessagePacket) String() string {
+func (*CPluginMessagePacket) String() string {
 	return "PluginMessage"
 }
 
-func (*PluginMessagePacket) Info() PacketInfo {
+func (*CPluginMessagePacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x19,
 		Direction:       ClientBound,
@@ -123,7 +123,7 @@ func (*PluginMessagePacket) Info() PacketInfo {
 	}
 }
 
-func (p *PluginMessagePacket) Marshal(w PacketWriter) error {
+func (p *CPluginMessagePacket) Marshal(w PacketWriter) error {
 	if err := w.WriteResourceLocation(p.Channel); err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func (p *PluginMessagePacket) Marshal(w PacketWriter) error {
 	return nil
 }
 
-func (p *PluginMessagePacket) Unmarshal(r PacketReader) error {
+func (p *CPluginMessagePacket) Unmarshal(r PacketReader) error {
 	var err error
 
 	if p.Channel, err = r.ReadResourceLocation(); err != nil {
@@ -145,7 +145,7 @@ func (p *PluginMessagePacket) Unmarshal(r PacketReader) error {
 	return nil
 }
 
-type CClientSettingsPacket struct {
+type SClientSettingsPacket struct {
 	Lang               string
 	ViewDistance       int8
 	ChatVisibility     int32
@@ -154,11 +154,11 @@ type CClientSettingsPacket struct {
 	MainHand           int32
 }
 
-func (*CClientSettingsPacket) String() string {
+func (*SClientSettingsPacket) String() string {
 	return "ClientSettings"
 }
 
-func (*CClientSettingsPacket) Info() PacketInfo {
+func (*SClientSettingsPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x05,
 		Direction:       ServerBound,
@@ -166,7 +166,7 @@ func (*CClientSettingsPacket) Info() PacketInfo {
 	}
 }
 
-func (cs *CClientSettingsPacket) Marshal(w PacketWriter) error {
+func (cs *SClientSettingsPacket) Marshal(w PacketWriter) error {
 	if err := w.WriteString(cs.Lang); err != nil {
 		return err
 	}
@@ -194,7 +194,7 @@ func (cs *CClientSettingsPacket) Marshal(w PacketWriter) error {
 	return nil
 }
 
-func (cs *CClientSettingsPacket) Unmarshal(r PacketReader) error {
+func (cs *SClientSettingsPacket) Unmarshal(r PacketReader) error {
 	var err error
 
 	if cs.Lang, err = r.ReadString(16); err != nil {
@@ -224,7 +224,7 @@ func (cs *CClientSettingsPacket) Unmarshal(r PacketReader) error {
 	return nil
 }
 
-type SPlayerPositionLookPacket struct {
+type CPlayerPositionLookPacket struct {
 	X          float64
 	Y          float64
 	Z          float64
@@ -234,11 +234,11 @@ type SPlayerPositionLookPacket struct {
 	TeleportID int32
 }
 
-func (*SPlayerPositionLookPacket) String() string {
+func (*CPlayerPositionLookPacket) String() string {
 	return "PlayerPositionAndLook"
 }
 
-func (*SPlayerPositionLookPacket) Info() PacketInfo {
+func (*CPlayerPositionLookPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x36,
 		Direction:       ClientBound,
@@ -246,7 +246,7 @@ func (*SPlayerPositionLookPacket) Info() PacketInfo {
 	}
 }
 
-func (p *SPlayerPositionLookPacket) Marshal(w PacketWriter) error {
+func (p *CPlayerPositionLookPacket) Marshal(w PacketWriter) error {
 	if err := w.WriteDouble(p.X); err != nil {
 		return err
 	}
@@ -278,7 +278,7 @@ func (p *SPlayerPositionLookPacket) Marshal(w PacketWriter) error {
 	return nil
 }
 
-func (p *SPlayerPositionLookPacket) Unmarshal(r PacketReader) error {
+func (p *CPlayerPositionLookPacket) Unmarshal(r PacketReader) error {
 	var err error
 
 	if p.X, err = r.ReadDouble(); err != nil {

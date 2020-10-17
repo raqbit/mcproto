@@ -1,34 +1,60 @@
 package mcproto
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
-// Minecraft chat component
-// See: https://wiki.vg/Chat#Current_system_.28JSON_Chat.29
-type TextComponent struct {
-	Text          string          `json:"text"`                    // Text content
-	Bold          *bool           `json:"bold,omitempty"`          // Component is emboldened
-	Italic        *bool           `json:"italic,omitempty"`        // Component is italicized
-	Underlined    *bool           `json:"underlined,omitempty"`    // Component is underlined
-	Strikethrough *bool           `json:"strikethrough,omitempty"` // Component is struck out
-	Obfuscated    *bool           `json:"obfuscated,omitempty"`    // Component randomly switches between characters of the same width
-	Color         string          `json:"color,omitempty"`         // Contains the color for the component
-	Extra         []TextComponent `json:"extra,omitempty"`         // TextComponent siblings
+// https://wiki.vg/Protocol#Chat_Message_.28clientbound.29
+type SChatMessagePacket struct {
+	Message  TextComponent
+	Position int8
 }
 
-// Lenient text component parser,
-func (c *TextComponent) UnmarshalJSON(data []byte) error {
-	// The data starts with quotes which means it's a string, not an object
-	if data[0] == '"' {
-		var text string
-		if err := json.Unmarshal(data, &text); err != nil {
-			return err
-		}
+func (mp *SChatMessagePacket) Info() PacketInfo {
+	return PacketInfo{
+		ID:              0x0f,
+		Direction:       ClientBound,
+		ConnectionState: PlayState,
+	}
+}
 
-		c.Text = text
-	} else {
-		if err := json.Unmarshal(data, &c); err != nil {
-			return err
-		}
+func (*SChatMessagePacket) String() string {
+	return "ChatMessage"
+}
+
+func (mp *SChatMessagePacket) Marshal(w PacketWriter) error {
+	var err error
+	var response []byte
+
+	if response, err = json.Marshal(mp.Message); err != nil {
+		return err
+	}
+
+	if err := w.WriteString(string(response)); err != nil {
+		return err
+	}
+
+	if err := w.WriteByte(mp.Position); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (mp *SChatMessagePacket) Unmarshal(r PacketReader) error {
+	var err error
+	var message string
+
+	if message, err = r.ReadMaxString(); err != nil {
+		return err
+	}
+
+	if err = json.Unmarshal([]byte(message), &mp.Message); err != nil {
+		return err
+	}
+
+	if mp.Position, err = r.ReadByte(); err != nil {
+		return err
 	}
 
 	return nil

@@ -5,9 +5,9 @@ import (
 )
 
 // https://wiki.vg/Protocol#Request
-type CServerQueryPacket struct{}
+type SServerQueryPacket struct{}
 
-func (r CServerQueryPacket) Info() PacketInfo {
+func (r SServerQueryPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x00,
 		Direction:       ServerBound,
@@ -15,24 +15,24 @@ func (r CServerQueryPacket) Info() PacketInfo {
 	}
 }
 
-func (*CServerQueryPacket) String() string {
+func (*SServerQueryPacket) String() string {
 	return "ServerQuery"
 }
 
-func (*CServerQueryPacket) Marshal(_ PacketWriter) error {
+func (*SServerQueryPacket) Marshal(_ PacketWriter) error {
 	return nil
 }
 
-func (*CServerQueryPacket) Unmarshal(_ PacketReader) error {
+func (*SServerQueryPacket) Unmarshal(_ PacketReader) error {
 	return nil
 }
 
 // https://wiki.vg/Protocol#Response
-type SServerInfoPacket struct {
+type CServerInfoPacket struct {
 	Response ServerInfo
 }
 
-func (*SServerInfoPacket) Info() PacketInfo {
+func (*CServerInfoPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x00,
 		Direction:       ClientBound,
@@ -40,11 +40,11 @@ func (*SServerInfoPacket) Info() PacketInfo {
 	}
 }
 
-func (*SServerInfoPacket) String() string {
+func (*CServerInfoPacket) String() string {
 	return "ServerInfo"
 }
 
-func (si *SServerInfoPacket) Marshal(w PacketWriter) error {
+func (si *CServerInfoPacket) Marshal(w PacketWriter) error {
 	var err error
 	var response []byte
 
@@ -59,7 +59,7 @@ func (si *SServerInfoPacket) Marshal(w PacketWriter) error {
 	return nil
 }
 
-func (si *SServerInfoPacket) Unmarshal(r PacketReader) error {
+func (si *CServerInfoPacket) Unmarshal(r PacketReader) error {
 	var err error
 	var response string
 
@@ -75,11 +75,11 @@ func (si *SServerInfoPacket) Unmarshal(r PacketReader) error {
 }
 
 // https://wiki.vg/Protocol#Ping
-type CPingPacket struct {
+type SPingPacket struct {
 	Payload int64
 }
 
-func (*CPingPacket) Info() PacketInfo {
+func (*SPingPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x01,
 		Direction:       ServerBound,
@@ -87,11 +87,11 @@ func (*CPingPacket) Info() PacketInfo {
 	}
 }
 
-func (*CPingPacket) String() string {
+func (*SPingPacket) String() string {
 	return "Ping"
 }
 
-func (p *CPingPacket) Marshal(w PacketWriter) error {
+func (p *SPingPacket) Marshal(w PacketWriter) error {
 	if err := w.WriteLong(p.Payload); err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (p *CPingPacket) Marshal(w PacketWriter) error {
 	return nil
 }
 
-func (p *CPingPacket) Unmarshal(r PacketReader) error {
+func (p *SPingPacket) Unmarshal(r PacketReader) error {
 	var err error
 
 	if p.Payload, err = r.ReadLong(); err != nil {
@@ -110,11 +110,11 @@ func (p *CPingPacket) Unmarshal(r PacketReader) error {
 }
 
 // https://wiki.vg/Protocol#Pong
-type SPongPacket struct {
+type CPongPacket struct {
 	Payload int64
 }
 
-func (*SPongPacket) Info() PacketInfo {
+func (*CPongPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x01,
 		Direction:       ClientBound,
@@ -122,11 +122,11 @@ func (*SPongPacket) Info() PacketInfo {
 	}
 }
 
-func (*SPongPacket) String() string {
+func (*CPongPacket) String() string {
 	return "Pong"
 }
 
-func (p *SPongPacket) Marshal(w PacketWriter) error {
+func (p *CPongPacket) Marshal(w PacketWriter) error {
 	if err := w.WriteLong(p.Payload); err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (p *SPongPacket) Marshal(w PacketWriter) error {
 	return nil
 }
 
-func (p *SPongPacket) Unmarshal(r PacketReader) error {
+func (p *CPongPacket) Unmarshal(r PacketReader) error {
 	var err error
 
 	if p.Payload, err = r.ReadLong(); err != nil {

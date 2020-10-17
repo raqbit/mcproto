@@ -49,7 +49,7 @@ func main() {
 		log.Fatalf("could not write handshake packet: %s", err)
 	}
 
-	err = conn.WritePacket(&mcproto.CServerQueryPacket{})
+	err = conn.WritePacket(&mcproto.SServerQueryPacket{})
 
 	if err != nil {
 		log.Fatalf("could not write request packet: %s", err)
@@ -61,7 +61,7 @@ func main() {
 		log.Fatalf("could not read response packet: %s", err)
 	}
 
-	response, ok := packet.(*mcproto.SServerInfoPacket)
+	response, ok := packet.(*mcproto.CServerInfoPacket)
 
 	if !ok {
 		log.Fatalf("Server sent unexpected packet: %s", packet.String())

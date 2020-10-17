@@ -53,17 +53,21 @@ func NewConnection(rw io.ReadWriteCloser, side ConnectionSide) *Connection {
 	}
 
 	// FIXME: DO NOT use the same packet instance for each unmarshal
+	// Server bound packets
+	conn.registerPacket(&SServerQueryPacket{})
+	conn.registerPacket(&SPingPacket{})
+	conn.registerPacket(&SLoginStartPacket{})
+	conn.registerPacket(&SClientSettingsPacket{})
+	conn.registerPacket(&SChatMessagePacket{})
+
+	// Client bound packets
+	conn.registerPacket(&CServerInfoPacket{})
+	conn.registerPacket(&CPongPacket{})
+	conn.registerPacket(&CDisconnectLoginPacket{})
+	conn.registerPacket(&CLoginSuccessPacket{})
+	conn.registerPacket(&CJoinGamePacket{})
+	conn.registerPacket(&CPlayerPositionLookPacket{})
 	conn.registerPacket(&CHandshakePacket{})
-	conn.registerPacket(&CServerQueryPacket{})
-	conn.registerPacket(&SServerInfoPacket{})
-	conn.registerPacket(&CPingPacket{})
-	conn.registerPacket(&SPongPacket{})
-	conn.registerPacket(&SDisconnectLoginPacket{})
-	conn.registerPacket(&CLoginStartPacket{})
-	conn.registerPacket(&SLoginSuccessPacket{})
-	conn.registerPacket(&SJoinGamePacket{})
-	conn.registerPacket(&CClientSettingsPacket{})
-	conn.registerPacket(&SPlayerPositionLookPacket{})
 
 	return conn
 }
@@ -89,14 +93,13 @@ func (c *Connection) ReadPacket() (Packet, error) {
 
 	// Read complete packet into memory
 	data := make([]byte, length)
-	_, err = io.ReadFull(c.rw, data)
+
+	if _, err = io.ReadFull(c.rw, data); err != nil {
+		return nil, fmt.Errorf("could not read packet from connection: %w", err)
+	}
 
 	// Create packetbuffer from data
 	packetBuffer := NewPacketReader(bytes.NewReader(data))
-
-	if err != nil {
-		return nil, fmt.Errorf("could not read packet data: %w", err)
-	}
 
 	pID, err := packetBuffer.ReadVarInt()
 
@@ -104,14 +107,10 @@ func (c *Connection) ReadPacket() (Packet, error) {
 		return nil, fmt.Errorf("could not decode packet ID: %w", err)
 	}
 
-	packet, ok := c.packets[PacketInfo{
-		ID:              pID,
-		Direction:       c.getReadDirection(),
-		ConnectionState: c.State,
-	}]
+	packet, err := c.getPacketTypeByID(pID)
 
-	if !ok {
-		return nil, fmt.Errorf("unknown packet ID, direction: %s, state: %s, ID: %#x", c.getReadDirection(), c.State, pID)
+	if err != nil {
+		return nil, err
 	}
 
 	log.Printf("[Recv] %s, %d: %s\n", c.State, pID, packet.String())
@@ -144,8 +143,6 @@ func (c *Connection) WritePacket(packetToWrite Packet) error {
 	if err := packetToWrite.Marshal(packetBuffer); err != nil {
 		return fmt.Errorf("could not encode packet data: %w", err)
 	}
-
-	// TODO: handle case where less than x bytes were written
 
 	// Write packet length to connection
 	if _, err := c.rw.Write(enc.WriteVarInt(int32(buffer.Len()))); err != nil {
@@ -182,4 +179,18 @@ func (c *Connection) Close() error {
 
 func (c *Connection) registerPacket(packet Packet) {
 	c.packets[packet.Info()] = packet
+}
+
+func (c *Connection) getPacketTypeByID(id int32) (Packet, error) {
+	p, ok := c.packets[PacketInfo{
+		ID:              id,
+		Direction:       c.getReadDirection(),
+		ConnectionState: c.State,
+	}]
+
+	if !ok {
+		return nil, fmt.Errorf("unknown packet ID, direction: %s, state: %s, ID: %#x", c.getReadDirection(), c.State, id)
+	}
+
+	return p, nil
 }
