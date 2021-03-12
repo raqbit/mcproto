@@ -47,7 +47,7 @@ func handleConnection(tcpConn net.Conn) {
 		p, err := conn.ReadPacket()
 
 		if err != nil {
-			if errors.Unwrap(err) == io.EOF {
+			if errors.Is(err, io.EOF) {
 				log.Println("Client closed the connection")
 				return
 			}
@@ -69,33 +69,33 @@ func handlePacket(conn *mcproto.Connection, p mcproto.Packet) error {
 	switch v := p.(type) {
 	case *mcproto.CHandshakePacket:
 		return handleHandshakePacket(conn, v)
-	case *mcproto.CServerQueryPacket:
+	case *mcproto.SServerQueryPacket:
 		return handleRequestPacket(conn, v)
-	case *mcproto.CPingPacket:
+	case *mcproto.SPingPacket:
 		return handlePingPacket(conn, v)
-	case *mcproto.CLoginStartPacket:
+	case *mcproto.SLoginStartPacket:
 		return handleLoginPacket(conn, v)
-	case *mcproto.CClientSettingsPacket:
+	case *mcproto.SClientSettingsPacket:
 		return handleClientSettingsPacket(conn, v)
 	default:
 		return fmt.Errorf("unhandled packet: %s", p)
 	}
 }
 
-func handleClientSettingsPacket(_ *mcproto.Connection, _ *mcproto.CClientSettingsPacket) error {
+func handleClientSettingsPacket(_ *mcproto.Connection, _ *mcproto.SClientSettingsPacket) error {
 	return nil
 }
 
-func handleLoginPacket(conn *mcproto.Connection, v *mcproto.CLoginStartPacket) error {
+func handleLoginPacket(conn *mcproto.Connection, v *mcproto.SLoginStartPacket) error {
 	conn.State = mcproto.PlayState
 	playerUuid, _ := uuid.NewRandom()
-	err := conn.WritePacket(&mcproto.SLoginSuccessPacket{Profile: mcproto.NewGameProfile(playerUuid, "Raqbit")})
+	err := conn.WritePacket(&mcproto.CLoginSuccessPacket{Profile: mcproto.NewGameProfile(playerUuid, "Raqbit")})
 
 	if err != nil {
 		return fmt.Errorf("could not write login success packet: %w", err)
 	}
 
-	err = conn.WritePacket(&mcproto.SJoinGamePacket{
+	err = conn.WritePacket(&mcproto.CJoinGamePacket{
 		PlayerID:            genRandomEid(),
 		GameMode:            1,
 		Dimension:           0,
@@ -112,13 +112,13 @@ func handleLoginPacket(conn *mcproto.Connection, v *mcproto.CLoginStartPacket) e
 	}
 
 	data := mcproto.NewPacketBuffer(new(bytes.Buffer))
-	err = data.WriteString("Raqbit custom")
+	err = data.WriteString("mcproto custom")
 
 	if err != nil {
 		return fmt.Errorf("could not write channel data")
 	}
 
-	err = conn.WritePacket(&mcproto.PluginMessagePacket{
+	err = conn.WritePacket(&mcproto.CPluginMessagePacket{
 		Channel: mcproto.NewResourceLocation("minecraft", "brand"),
 		Data:    data,
 	})
@@ -127,7 +127,7 @@ func handleLoginPacket(conn *mcproto.Connection, v *mcproto.CLoginStartPacket) e
 		return fmt.Errorf("could not write brand packet: %w", err)
 	}
 
-	err = conn.WritePacket(&mcproto.SPlayerPositionLookPacket{
+	err = conn.WritePacket(&mcproto.CPlayerPositionLookPacket{
 		X:          0,
 		Y:          0,
 		Z:          0,
@@ -141,17 +141,30 @@ func handleLoginPacket(conn *mcproto.Connection, v *mcproto.CLoginStartPacket) e
 		return fmt.Errorf("could not write player posision and look packet: %w", err)
 	}
 
+	for i := 0; i < 40; i += 1 {
+		err = conn.WritePacket(&mcproto.SChatMessagePacket{
+			Message: mcproto.TextComponent{
+				Text:  "Sent from mcproto",
+				Color: "red",
+			},
+		})
+
+		if err != nil {
+			return fmt.Errorf("could not chat message packet: %w", err)
+		}
+	}
+
 	return nil
 }
 
-func handlePingPacket(conn *mcproto.Connection, v *mcproto.CPingPacket) error {
-	return conn.WritePacket(&mcproto.SPongPacket{Payload: v.Payload})
+func handlePingPacket(conn *mcproto.Connection, v *mcproto.SPingPacket) error {
+	return conn.WritePacket(&mcproto.CPongPacket{Payload: v.Payload})
 }
 
-func handleRequestPacket(conn *mcproto.Connection, _ *mcproto.CServerQueryPacket) error {
+func handleRequestPacket(conn *mcproto.Connection, _ *mcproto.SServerQueryPacket) error {
 	status := mcproto.ServerInfo{
 		Version: mcproto.Version{
-			Name:     "raqbit-custom",
+			Name:     "mcproto-custom",
 			Protocol: ProtocolVersion,
 		},
 		Players: mcproto.Players{
@@ -160,12 +173,12 @@ func handleRequestPacket(conn *mcproto.Connection, _ *mcproto.CServerQueryPacket
 			Sample: []mcproto.Player{},
 		},
 		Description: mcproto.TextComponent{
-			Text:  ":partyparrot:",
-			Color: "green",
+			Text:  "mcproto example server",
+			Color: "red",
 		},
 	}
 
-	err := conn.WritePacket(&mcproto.SServerInfoPacket{
+	err := conn.WritePacket(&mcproto.CServerInfoPacket{
 		Response: status,
 	})
 

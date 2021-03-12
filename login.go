@@ -6,11 +6,11 @@ import (
 )
 
 // https://wiki.vg/Protocol#Login_Start
-type CLoginStartPacket struct {
+type SLoginStartPacket struct {
 	Profile *GameProfile
 }
 
-func (*CLoginStartPacket) Info() PacketInfo {
+func (*SLoginStartPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x00,
 		Direction:       ServerBound,
@@ -18,11 +18,11 @@ func (*CLoginStartPacket) Info() PacketInfo {
 	}
 }
 
-func (*CLoginStartPacket) String() string {
+func (*SLoginStartPacket) String() string {
 	return "LoginStart"
 }
 
-func (l *CLoginStartPacket) Marshal(w PacketWriter) error {
+func (l *SLoginStartPacket) Marshal(w PacketWriter) error {
 	if err := w.WriteString(l.Profile.Name); err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func (l *CLoginStartPacket) Marshal(w PacketWriter) error {
 	return nil
 }
 
-func (l *CLoginStartPacket) Unmarshal(r PacketReader) error {
+func (l *SLoginStartPacket) Unmarshal(r PacketReader) error {
 	var err error
 	var name string
 
@@ -44,11 +44,11 @@ func (l *CLoginStartPacket) Unmarshal(r PacketReader) error {
 }
 
 // https://wiki.vg/Protocol#Disconnect_.28login.29
-type SDisconnectLoginPacket struct {
+type CDisconnectLoginPacket struct {
 	Reason TextComponent
 }
 
-func (*SDisconnectLoginPacket) Info() PacketInfo {
+func (*CDisconnectLoginPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x00,
 		Direction:       ClientBound,
@@ -56,11 +56,11 @@ func (*SDisconnectLoginPacket) Info() PacketInfo {
 	}
 }
 
-func (*SDisconnectLoginPacket) String() string {
+func (*CDisconnectLoginPacket) String() string {
 	return "Disconnect"
 }
 
-func (d *SDisconnectLoginPacket) Marshal(w PacketWriter) error {
+func (d *CDisconnectLoginPacket) Marshal(w PacketWriter) error {
 	var err error
 	var reason []byte
 
@@ -75,7 +75,7 @@ func (d *SDisconnectLoginPacket) Marshal(w PacketWriter) error {
 	return nil
 }
 
-func (d *SDisconnectLoginPacket) Unmarshal(r PacketReader) error {
+func (d *CDisconnectLoginPacket) Unmarshal(r PacketReader) error {
 	var err error
 	var reason string
 
@@ -91,11 +91,11 @@ func (d *SDisconnectLoginPacket) Unmarshal(r PacketReader) error {
 }
 
 // https://wiki.vg/Protocol#Login_Success
-type SLoginSuccessPacket struct {
+type CLoginSuccessPacket struct {
 	Profile *GameProfile
 }
 
-func (*SLoginSuccessPacket) Info() PacketInfo {
+func (*CLoginSuccessPacket) Info() PacketInfo {
 	return PacketInfo{
 		ID:              0x02,
 		Direction:       ClientBound,
@@ -103,11 +103,11 @@ func (*SLoginSuccessPacket) Info() PacketInfo {
 	}
 }
 
-func (*SLoginSuccessPacket) String() string {
+func (*CLoginSuccessPacket) String() string {
 	return "LoginSuccess"
 }
 
-func (l *SLoginSuccessPacket) Marshal(w PacketWriter) error {
+func (l *CLoginSuccessPacket) Marshal(w PacketWriter) error {
 	if err := w.WriteString(l.Profile.UUID.String()); err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (l *SLoginSuccessPacket) Marshal(w PacketWriter) error {
 	return nil
 }
 
-func (l *SLoginSuccessPacket) Unmarshal(r PacketReader) error {
+func (l *CLoginSuccessPacket) Unmarshal(r PacketReader) error {
 	var err error
 	var uuidStr string
 	var name string
