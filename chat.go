@@ -4,25 +4,27 @@ import (
 	"encoding/json"
 )
 
+const ChatMessagePacketID = 0x0f
+
 // https://wiki.vg/Protocol#Chat_Message_.28clientbound.29
-type SChatMessagePacket struct {
+type ChatMessagePacket struct {
 	Message  TextComponent
 	Position int8
 }
 
-func (mp *SChatMessagePacket) Info() PacketInfo {
+func (mp *ChatMessagePacket) Info() PacketInfo {
 	return PacketInfo{
-		ID:              0x0f,
+		ID:              ChatMessagePacketID,
 		Direction:       ClientBound,
-		ConnectionState: PlayState,
+		ConnectionState: ConnectionStatePlay,
 	}
 }
 
-func (*SChatMessagePacket) String() string {
+func (*ChatMessagePacket) String() string {
 	return "ChatMessage"
 }
 
-func (mp *SChatMessagePacket) Marshal(w PacketWriter) error {
+func (mp *ChatMessagePacket) Marshal(w PacketWriter) error {
 	var err error
 	var response []byte
 
@@ -30,18 +32,18 @@ func (mp *SChatMessagePacket) Marshal(w PacketWriter) error {
 		return err
 	}
 
-	if err := w.WriteString(string(response)); err != nil {
+	if err = w.WriteString(string(response)); err != nil {
 		return err
 	}
 
-	if err := w.WriteByte(mp.Position); err != nil {
+	if err = w.WriteByte(mp.Position); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (mp *SChatMessagePacket) Unmarshal(r PacketReader) error {
+func (mp *ChatMessagePacket) Unmarshal(r PacketReader) error {
 	var err error
 	var message string
 

@@ -2,80 +2,108 @@ package mcproto
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	enc "github.com/Raqbit/mcproto/encoding"
 	"io"
 	"log"
+	"net"
+	"time"
 )
 
-// The state of a connection
-type ConnectionState uint8
-
-const (
-	HandshakeState = 0x00 // Client is making a handshake
-	StatusState    = 0x01 // Client is receiving the server status
-	LoginState     = 0x02 // Client is logging in
-	PlayState      = 0x03 // Client is playing
+var (
+	ErrConnectionState = errors.New("connection has invalid state for packet type")
+	ErrDirection       = errors.New("packet being sent in wrong direction")
 )
 
-func (c ConnectionState) String() string {
-	names := []string{
-		"handshake",
-		"status",
-		"login",
-		"play",
-	}
-
-	return names[c]
+// Connection represents a connection
+// to a Minecraft server or client.
+type Connection interface {
+	ReadPacket(context.Context) (Packet, error)
+	WritePacket(context.Context, Packet) error
+	Close() error
+	SwitchState(state ConnectionState)
 }
 
-type ConnectionSide uint8
-
-const (
-	ClientSide ConnectionSide = iota
-	ServerSide
-)
-
-type Connection struct {
-	rw      io.ReadWriteCloser
-	State   ConnectionState
-	side    ConnectionSide
-	packets map[PacketInfo]Packet
+type connection struct {
+	transport net.Conn
+	state     ConnectionState
+	side      Side
+	packets   map[PacketInfo]Packet
 }
 
-// Creates a new connection using the provided tcp connection
-func NewConnection(rw io.ReadWriteCloser, side ConnectionSide) *Connection {
-	conn := &Connection{
-		rw:      rw,
-		side:    side,
-		State:   HandshakeState,
-		packets: make(map[PacketInfo]Packet),
+// Dial connects to the specified address and creates
+// a new Connection for it.
+func Dial(address string, side Side) (Connection, error) {
+	return DialContext(context.Background(), address, side)
+}
+
+// Dial creates a TCP connection with specified address
+// and creates a new Connection for it.
+//
+// The provided Context must be non-nil. If the context expires before
+// the connection is complete, an error is returned. Once successfully
+// connected, any expiration of the context will not affect the connection.
+func DialContext(ctx context.Context, address string, side Side) (Connection, error) {
+	// Make TCP connection
+	var d net.Dialer
+	tcpConn, err := d.DialContext(ctx, "tcp", address)
+
+	if err != nil {
+		return nil, err
 	}
 
-	// FIXME: DO NOT use the same packet instance for each unmarshal
+	return WrapConnection(tcpConn, side), nil
+}
+
+// WrapConnection wraps the given connection with a Connection,
+// so it can be used for sending/receiving Minecraft packets.
+func WrapConnection(transport net.Conn, side Side) Connection {
+	conn := &connection{
+		transport: transport,
+		state:     ConnectionStateHandshake,
+		side:      side,
+		packets:   make(map[PacketInfo]Packet),
+	}
+
 	// Server bound packets
-	conn.registerPacket(&SServerQueryPacket{})
-	conn.registerPacket(&SPingPacket{})
-	conn.registerPacket(&SLoginStartPacket{})
-	conn.registerPacket(&SClientSettingsPacket{})
-	conn.registerPacket(&SChatMessagePacket{})
+	conn.registerPacket(&HandshakePacket{})
+	conn.registerPacket(&ServerQueryPacket{})
+	conn.registerPacket(&PingPacket{})
+	conn.registerPacket(&LoginStartPacket{})
+	conn.registerPacket(&ClientSettingsPacket{})
 
 	// Client bound packets
-	conn.registerPacket(&CServerInfoPacket{})
-	conn.registerPacket(&CPongPacket{})
-	conn.registerPacket(&CDisconnectLoginPacket{})
-	conn.registerPacket(&CLoginSuccessPacket{})
-	conn.registerPacket(&CJoinGamePacket{})
-	conn.registerPacket(&CPlayerPositionLookPacket{})
-	conn.registerPacket(&CHandshakePacket{})
+	conn.registerPacket(&PongPacket{})
+	conn.registerPacket(&LoginSuccessPacket{})
+	conn.registerPacket(&ChatMessagePacket{})
+	conn.registerPacket(&ServerInfoPacket{})
+	conn.registerPacket(&LoginDisconnectPacket{})
+	conn.registerPacket(&JoinGamePacket{})
+	conn.registerPacket(&PlayerPositionLookPacket{})
 
 	return conn
 }
 
+// TODO: Make cancel-based contexts work for ReadPacket & WritePacket
+
 // Reads a packet from the connection
-func (c *Connection) ReadPacket() (Packet, error) {
+func (c *connection) ReadPacket(ctx context.Context) (Packet, error) {
+	if ctx == nil {
+		panic("nil context")
+	}
+
+	deadline, hasDeadline := ctx.Deadline()
+
+	if hasDeadline && !deadline.IsZero() {
+		_ = c.transport.SetReadDeadline(deadline)
+	} else {
+		_ = c.transport.SetReadDeadline(time.Time{})
+	}
+
 	// Read packet length
-	length, err := enc.ReadVarInt(c.rw)
+	length, err := enc.ReadVarInt(c.transport)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not read packet length: %w", err)
@@ -94,7 +122,7 @@ func (c *Connection) ReadPacket() (Packet, error) {
 	// Read complete packet into memory
 	data := make([]byte, length)
 
-	if _, err = io.ReadFull(c.rw, data); err != nil {
+	if _, err = io.ReadAtLeast(c.transport, data, int(length)); err != nil {
 		return nil, fmt.Errorf("could not read packet from connection: %w", err)
 	}
 
@@ -113,7 +141,7 @@ func (c *Connection) ReadPacket() (Packet, error) {
 		return nil, err
 	}
 
-	log.Printf("[Recv] %s, %d: %s\n", c.State, pID, packet.String())
+	log.Printf("[Recv] %s, %d: %s\n", c.state, pID, packet.String())
 
 	// Decode packet
 	err = packet.Unmarshal(packetBuffer)
@@ -126,10 +154,30 @@ func (c *Connection) ReadPacket() (Packet, error) {
 }
 
 // Writes a packet to the connection
-func (c *Connection) WritePacket(packetToWrite Packet) error {
+func (c *connection) WritePacket(ctx context.Context, packetToWrite Packet) error {
+	if ctx == nil {
+		panic("nil context")
+	}
+
+	deadline, hasDeadline := ctx.Deadline()
+
+	if hasDeadline && !deadline.IsZero() {
+		_ = c.transport.SetWriteDeadline(deadline)
+	} else {
+		_ = c.transport.SetWriteDeadline(time.Time{})
+	}
+
 	packetInfo := packetToWrite.Info()
 
-	log.Printf("[Send] %s, %d: %s\n", c.State, packetInfo.ID, packetToWrite.String())
+	if packetInfo.ConnectionState != c.state {
+		return ErrConnectionState
+	}
+
+	if packetInfo.Direction != c.getWriteDirection() {
+		return ErrDirection
+	}
+
+	log.Printf("[Send] %s, %d: %s\n", c.state, packetInfo.ID, packetToWrite.String())
 
 	buffer := new(bytes.Buffer)
 	packetBuffer := NewPacketBuffer(buffer)
@@ -145,19 +193,23 @@ func (c *Connection) WritePacket(packetToWrite Packet) error {
 	}
 
 	// Write packet length to connection
-	if _, err := c.rw.Write(enc.WriteVarInt(int32(buffer.Len()))); err != nil {
+	if _, err := c.transport.Write(enc.WriteVarInt(int32(buffer.Len()))); err != nil {
 		return fmt.Errorf("could not write packet length: %w", err)
 	}
 
 	// Write buffer to connection
-	if _, err := buffer.WriteTo(c.rw); err != nil {
+	if _, err := buffer.WriteTo(c.transport); err != nil {
 		return fmt.Errorf("could not write packet data: %w", err)
 	}
 
 	return nil
 }
 
-func (c *Connection) getReadDirection() PacketDirection {
+func (c *connection) SwitchState(state ConnectionState) {
+	c.state = state
+}
+
+func (c *connection) getReadDirection() PacketDirection {
 	if c.side == ServerSide {
 		return ServerBound
 	} else {
@@ -165,7 +217,7 @@ func (c *Connection) getReadDirection() PacketDirection {
 	}
 }
 
-func (c *Connection) getWriteDirection() PacketDirection {
+func (c *connection) getWriteDirection() PacketDirection {
 	if c.side == ServerSide {
 		return ClientBound
 	} else {
@@ -173,23 +225,23 @@ func (c *Connection) getWriteDirection() PacketDirection {
 	}
 }
 
-func (c *Connection) Close() error {
-	return c.rw.Close()
+func (c *connection) Close() error {
+	return c.transport.Close()
 }
 
-func (c *Connection) registerPacket(packet Packet) {
+func (c *connection) registerPacket(packet Packet) {
 	c.packets[packet.Info()] = packet
 }
 
-func (c *Connection) getPacketTypeByID(id int32) (Packet, error) {
+func (c *connection) getPacketTypeByID(id int32) (Packet, error) {
 	p, ok := c.packets[PacketInfo{
 		ID:              id,
 		Direction:       c.getReadDirection(),
-		ConnectionState: c.State,
+		ConnectionState: c.state,
 	}]
 
 	if !ok {
-		return nil, fmt.Errorf("unknown packet ID, direction: %s, state: %s, ID: %#x", c.getReadDirection(), c.State, id)
+		return nil, fmt.Errorf("unknown packet ID, direction: %s, state: %s, ID: %#x", c.getReadDirection(), c.state, id)
 	}
 
 	return p, nil

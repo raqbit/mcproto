@@ -28,7 +28,7 @@ type (
 	PacketReader interface {
 		io.Reader
 		ReadBytes(maxLength int64) (PacketReader, error)
-		ReadResourceLocation() (*ResourceLocation, error)
+		ReadIdentifier() (Identifier, error)
 		ReadMaxString() (string, error)
 		ReadString(maxLength int32) (string, error)
 		ReadFloat() (float32, error)
@@ -46,7 +46,7 @@ type (
 	PacketWriter interface {
 		io.Writer
 		WriteBytes(data PacketReader) error
-		WriteResourceLocation(value *ResourceLocation) error
+		WriteIdentifier(value Identifier) error
 		WriteString(value string) error
 		WriteFloat(value float32) error
 		WriteDouble(value float64) error
@@ -139,7 +139,7 @@ func (b *PacketBuffer) WriteUnsignedByte(value uint8) error {
 	return err
 }
 
-func (b *PacketBuffer) WriteResourceLocation(value *ResourceLocation) error {
+func (b *PacketBuffer) WriteIdentifier(value Identifier) error {
 	_, err := b.w.Write(enc.WriteString(value.String()))
 	return err
 }
@@ -190,14 +190,14 @@ func (b *PacketBuffer) ReadBool() (bool, error) {
 	return enc.ReadBool(b.r)
 }
 
-func (b *PacketBuffer) ReadResourceLocation() (*ResourceLocation, error) {
+func (b *PacketBuffer) ReadIdentifier() (Identifier, error) {
 	str, err := b.ReadMaxString()
 
 	if err != nil {
-		return nil, err
+		return Identifier{}, err
 	}
 
-	return NewResourceLocationFromString(str), nil
+	return NewIdentifierFromString(str), nil
 }
 
 func (b *PacketBuffer) ReadBytes(maxLength int64) (PacketReader, error) {
@@ -217,20 +217,3 @@ func (b *PacketBuffer) ReadBytes(maxLength int64) (PacketReader, error) {
 func (b *PacketBuffer) ReadByte() (int8, error) {
 	return enc.ReadByte(b.r)
 }
-
-// The direction of a packet
-type PacketDirection byte
-
-func (p PacketDirection) String() string {
-	names := []string{
-		"client-bound",
-		"server-bound",
-	}
-
-	return names[p]
-}
-
-const (
-	ClientBound PacketDirection = iota
-	ServerBound
-)

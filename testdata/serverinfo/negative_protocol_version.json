@@ -1,0 +1,13 @@
+{
+  "description": {
+    "text": "A Vanilla Minecraft Server powered by Docker"
+  },
+  "players": {
+    "max": 8,
+    "online": 0
+  },
+  "version": {
+    "name": "Paper 1.16.5",
+    "protocol": -1
+  }
+}

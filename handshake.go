@@ -1,46 +1,50 @@
 package mcproto
 
+const HandshakePacketID int32 = 0x00
+
 // https://wiki.vg/Protocol#Handshake
-type CHandshakePacket struct {
+type HandshakePacket struct {
 	ProtoVer   int32
 	ServerAddr string
 	ServerPort uint16
 	NextState  ConnectionState
 }
 
-func (h *CHandshakePacket) Info() PacketInfo {
+func (h *HandshakePacket) Info() PacketInfo {
 	return PacketInfo{
-		ID:              0x00,
+		ID:              HandshakePacketID,
 		Direction:       ServerBound,
-		ConnectionState: HandshakeState,
+		ConnectionState: ConnectionStateHandshake,
 	}
 }
 
-func (*CHandshakePacket) String() string {
+func (*HandshakePacket) String() string {
 	return "Handshake"
 }
 
-func (h *CHandshakePacket) Marshal(w PacketWriter) error {
-	if err := w.WriteVarInt(h.ProtoVer); err != nil {
+func (h *HandshakePacket) Marshal(w PacketWriter) error {
+	var err error
+
+	if err = w.WriteVarInt(h.ProtoVer); err != nil {
 		return err
 	}
 
-	if err := w.WriteString(h.ServerAddr); err != nil {
+	if err = w.WriteString(h.ServerAddr); err != nil {
 		return err
 	}
 
-	if err := w.WriteUnsignedShort(h.ServerPort); err != nil {
+	if err = w.WriteUnsignedShort(h.ServerPort); err != nil {
 		return err
 	}
 
-	if err := w.WriteVarInt(int32(h.NextState)); err != nil {
+	if err = w.WriteVarInt(int32(h.NextState)); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (h *CHandshakePacket) Unmarshal(r PacketReader) error {
+func (h *HandshakePacket) Unmarshal(r PacketReader) error {
 	var err error
 
 	if h.ProtoVer, err = r.ReadVarInt(); err != nil {
