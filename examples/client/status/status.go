@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 )
 
 const (
@@ -27,41 +29,44 @@ func main() {
 		os.Exit(2)
 	}
 
-	tcpConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", *ServerHost, *ServerPort))
+	ctx := context.Background()
+
+	address := net.JoinHostPort(*ServerHost, strconv.Itoa(int(*ServerPort)))
+
+	conn, err := mcproto.Dial(address, mcproto.ClientSide)
 
 	if err != nil {
 		log.Fatalf("tcp dial error: %s", err)
 	}
 
-	conn := mcproto.NewConnection(tcpConn, mcproto.ClientSide)
-
-	err = conn.WritePacket(&mcproto.CHandshakePacket{
-		ProtoVer:   ProtocolVersion,
-		ServerAddr: *ServerHost,
-		ServerPort: uint16(*ServerPort),
-		NextState:  mcproto.StatusState,
-	})
+	err = conn.WritePacket(ctx,
+		&mcproto.HandshakePacket{
+			ProtoVer:   ProtocolVersion,
+			ServerAddr: *ServerHost,
+			ServerPort: uint16(*ServerPort),
+			NextState:  mcproto.ConnectionStateStatus,
+		})
 
 	// Actually update our connection as well
-	conn.State = mcproto.StatusState
+	conn.SwitchState(mcproto.ConnectionStateStatus)
 
 	if err != nil {
 		log.Fatalf("could not write handshake packet: %s", err)
 	}
 
-	err = conn.WritePacket(&mcproto.SServerQueryPacket{})
+	err = conn.WritePacket(ctx, &mcproto.ServerQueryPacket{})
 
 	if err != nil {
 		log.Fatalf("could not write request packet: %s", err)
 	}
 
-	packet, err := conn.ReadPacket()
+	packet, err := conn.ReadPacket(ctx)
 
 	if err != nil {
 		log.Fatalf("could not read response packet: %s", err)
 	}
 
-	response, ok := packet.(*mcproto.CServerInfoPacket)
+	response, ok := packet.(*mcproto.ServerInfoPacket)
 
 	if !ok {
 		log.Fatalf("Server sent unexpected packet: %s", packet.String())

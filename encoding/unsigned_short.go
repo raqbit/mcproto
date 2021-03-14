@@ -7,7 +7,7 @@ import (
 
 func WriteUnsignedShort(value uint16) []byte {
 	buf := make([]byte, 2)
-	binary.BigEndian.PutUint16(buf, uint16(value))
+	binary.BigEndian.PutUint16(buf, value)
 	return buf
 }
 
