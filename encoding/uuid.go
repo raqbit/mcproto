@@ -1,6 +1,7 @@
 package encoding
 
 import (
+	"encoding/binary"
 	"github.com/google/uuid"
 	"io"
 )
@@ -8,25 +9,10 @@ import (
 type UUID uuid.UUID
 
 func (u *UUID) Write(w io.Writer) error {
-	str := String(uuid.UUID(*u).String())
-	return str.Write(w)
+	return binary.Write(w, binary.BigEndian, u)
 }
 
 func (u *UUID) Read(r io.Reader) error {
-	var err error
-	var str String
+	return binary.Read(r, binary.BigEndian, u)
 
-	if err = str.Read(r); err != nil {
-		return err
-	}
-
-	uid, err := uuid.Parse(string(str))
-
-	if err != nil {
-		return err
-	}
-
-	*u = UUID(uid)
-
-	return nil
 }
