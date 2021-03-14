@@ -1,10 +1,16 @@
 package mcproto
 
+import (
+	enc "github.com/Raqbit/mcproto/encoding"
+)
+
+//go:generate go run ../tools/genpacket/genpacket.go -packet=PongPacket -output=pong_gen.go
+
 const PongPacketID int32 = 0x01
 
 // https://wiki.vg/Protocol#Pong
 type PongPacket struct {
-	Payload int64
+	Payload enc.Long
 }
 
 func (*PongPacket) Info() PacketInfo {
@@ -17,18 +23,4 @@ func (*PongPacket) Info() PacketInfo {
 
 func (*PongPacket) String() string {
 	return "Pong"
-}
-
-func (p *PongPacket) Marshal(w PacketWriter) error {
-	return w.WriteLong(p.Payload)
-}
-
-func (p *PongPacket) Unmarshal(r PacketReader) error {
-	var err error
-
-	if p.Payload, err = r.ReadLong(); err != nil {
-		return err
-	}
-
-	return nil
 }

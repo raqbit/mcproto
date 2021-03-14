@@ -5,12 +5,12 @@ import (
 	"io"
 )
 
-func WriteByte(value int8) []byte {
-	return []byte{byte(value)}
+type Byte int8
+
+func (b *Byte) Write(w io.Writer) error {
+	return binary.Write(w, binary.BigEndian, b)
 }
 
-func ReadByte(r io.Reader) (int8, error) {
-	var b int8
-	err := binary.Read(r, binary.BigEndian, &b)
-	return b, err
+func (b *Byte) Read(r io.Reader) error {
+	return binary.Read(r, binary.BigEndian, b)
 }

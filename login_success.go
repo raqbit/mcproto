@@ -1,13 +1,17 @@
 package mcproto
 
-import "github.com/google/uuid"
+import (
+	enc "github.com/Raqbit/mcproto/encoding"
+)
+
+//go:generate go run ../tools/genpacket/genpacket.go -packet=LoginSuccessPacket -output=login_success_gen.go
 
 const LoginSuccessPacketID = 0x02
 
 // https://wiki.vg/Protocol#Login_Success
 type LoginSuccessPacket struct {
-	UUID     uuid.UUID
-	Username string
+	UUID     enc.UUID
+	Username enc.String
 }
 
 func (*LoginSuccessPacket) Info() PacketInfo {
@@ -20,37 +24,4 @@ func (*LoginSuccessPacket) Info() PacketInfo {
 
 func (*LoginSuccessPacket) String() string {
 	return "LoginSuccess"
-}
-
-func (l *LoginSuccessPacket) Marshal(w PacketWriter) error {
-	var err error
-
-	if err = w.WriteString(l.UUID.String()); err != nil {
-		return err
-	}
-
-	if err = w.WriteString(l.Username); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (l *LoginSuccessPacket) Unmarshal(r PacketReader) error {
-	var err error
-	var uuidStr string
-
-	if uuidStr, err = r.ReadString(36); err != nil {
-		return err
-	}
-
-	if l.UUID, err = uuid.Parse(uuidStr); err != nil {
-		return err
-	}
-
-	if l.Username, err = r.ReadString(16); err != nil {
-		return err
-	}
-
-	return nil
 }

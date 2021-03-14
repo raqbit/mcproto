@@ -1,6 +1,6 @@
 package mcproto
 
-import "encoding/json"
+//go:generate go run ../tools/genpacket/genpacket.go -packet=LoginDisconnectPacket -output=login_disconnect_gen.go
 
 const LoginDisconnectPacketID int32 = 0x00
 
@@ -19,34 +19,4 @@ func (*LoginDisconnectPacket) Info() PacketInfo {
 
 func (*LoginDisconnectPacket) String() string {
 	return "LoginDisconnect"
-}
-
-func (d *LoginDisconnectPacket) Marshal(w PacketWriter) error {
-	var err error
-	var reason []byte
-
-	if reason, err = json.Marshal(d.Reason); err != nil {
-		return err
-	}
-
-	if err = w.WriteString(string(reason)); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (d *LoginDisconnectPacket) Unmarshal(r PacketReader) error {
-	var err error
-	var reason string
-
-	if reason, err = r.ReadMaxString(); err != nil {
-		return err
-	}
-
-	if err = json.Unmarshal([]byte(reason), &d.Reason); err != nil {
-		return err
-	}
-
-	return nil
 }

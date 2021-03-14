@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/Raqbit/mcproto"
+	enc "github.com/Raqbit/mcproto/encoding"
 	"log"
 	"net"
 	"os"
@@ -42,8 +43,8 @@ func main() {
 	err = conn.WritePacket(ctx,
 		&mcproto.HandshakePacket{
 			ProtoVer:   ProtocolVersion,
-			ServerAddr: *ServerHost,
-			ServerPort: uint16(*ServerPort),
+			ServerAddr: enc.String(*ServerHost),
+			ServerPort: enc.UnsignedShort(*ServerPort),
 			NextState:  mcproto.ConnectionStateStatus,
 		})
 

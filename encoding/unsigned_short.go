@@ -5,14 +5,12 @@ import (
 	"io"
 )
 
-func WriteUnsignedShort(value uint16) []byte {
-	buf := make([]byte, 2)
-	binary.BigEndian.PutUint16(buf, value)
-	return buf
+type UnsignedShort uint16
+
+func (us *UnsignedShort) Write(w io.Writer) error {
+	return binary.Write(w, binary.BigEndian, us)
 }
 
-func ReadUnsignedShort(buff io.Reader) (uint16, error) {
-	var short uint16
-	err := binary.Read(buff, binary.BigEndian, &short)
-	return short, err
+func (us *UnsignedShort) Read(r io.Reader) error {
+	return binary.Read(r, binary.BigEndian, us)
 }

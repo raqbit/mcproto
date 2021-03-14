@@ -5,16 +5,12 @@ import (
 	"io"
 )
 
-func WriteBool(value bool) []byte {
-	var b byte
-	if value {
-		b = 0x01
-	}
-	return []byte{b}
+type Bool bool
+
+func (b *Bool) Write(w io.Writer) error {
+	return binary.Write(w, binary.BigEndian, b)
 }
 
-func ReadBool(buff io.Reader) (bool, error) {
-	var bl bool
-	err := binary.Read(buff, binary.BigEndian, &bl)
-	return bl, err
+func (b *Bool) Read(r io.Reader) error {
+	return binary.Read(r, binary.BigEndian, b)
 }

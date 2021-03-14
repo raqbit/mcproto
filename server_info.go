@@ -1,6 +1,12 @@
 package mcproto
 
-import "encoding/json"
+import (
+	"encoding/json"
+	enc "github.com/Raqbit/mcproto/encoding"
+	"io"
+)
+
+//go:generate go run ../tools/genpacket/genpacket.go -packet=ServerInfoPacket -output=server_info_gen.go
 
 const ServerInfoPacketID int32 = 0x00
 
@@ -19,36 +25,6 @@ func (*ServerInfoPacket) Info() PacketInfo {
 
 func (*ServerInfoPacket) String() string {
 	return "ServerInfo"
-}
-
-func (si *ServerInfoPacket) Marshal(w PacketWriter) error {
-	var err error
-	var response []byte
-
-	if response, err = json.Marshal(si.Response); err != nil {
-		return err
-	}
-
-	if err = w.WriteString(string(response)); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (si *ServerInfoPacket) Unmarshal(r PacketReader) error {
-	var err error
-	var response string
-
-	if response, err = r.ReadMaxString(); err != nil {
-		return err
-	}
-
-	if err = json.Unmarshal([]byte(response), &si.Response); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 type Version struct {
@@ -76,6 +52,27 @@ type ServerInfo struct {
 	Players     Players           `json:"players"`           // Server player info
 	Description ServerDescription `json:"description"`       // Server description
 	Favicon     string            `json:"favicon,omitempty"` // Server favicon
+}
+
+func (s *ServerInfo) Write(w io.Writer) error {
+	bytes, err := json.Marshal(s)
+
+	if err != nil {
+		return err
+	}
+
+	str := enc.String(bytes)
+	return str.Write(w)
+}
+
+func (s *ServerInfo) Read(r io.Reader) error {
+	var str enc.String
+
+	if err := str.Read(r); err != nil {
+		return err
+	}
+
+	return json.Unmarshal([]byte(str), s)
 }
 
 // ServerDescription can be both a string (legacy) or TextComponent JSON structure

@@ -3,17 +3,14 @@ package encoding
 import (
 	"encoding/binary"
 	"io"
-	"math"
 )
 
-func WriteFloat(value float32) []byte {
-	buf := make([]byte, 4)
-	binary.BigEndian.PutUint32(buf, math.Float32bits(value))
-	return buf
+type Float float32
+
+func (f *Float) Write(w io.Writer) error {
+	return binary.Write(w, binary.BigEndian, f)
 }
 
-func ReadFloat(buff io.Reader) (float32, error) {
-	var float float32
-	err := binary.Read(buff, binary.BigEndian, &float)
-	return float, err
+func (f *Float) Read(r io.Reader) error {
+	return binary.Read(r, binary.BigEndian, f)
 }

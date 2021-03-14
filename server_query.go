@@ -1,5 +1,7 @@
 package mcproto
 
+//go:generate go run ../tools/genpacket/genpacket.go -packet=ServerQueryPacket -output=server_query_gen.go
+
 const ServerQueryPacketID int32 = 0x00
 
 // https://wiki.vg/Protocol#Request
@@ -15,12 +17,4 @@ func (r ServerQueryPacket) Info() PacketInfo {
 
 func (*ServerQueryPacket) String() string {
 	return "ServerQuery"
-}
-
-func (*ServerQueryPacket) Marshal(_ PacketWriter) error {
-	return nil
-}
-
-func (*ServerQueryPacket) Unmarshal(_ PacketReader) error {
-	return nil
 }

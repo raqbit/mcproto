@@ -15,35 +15,39 @@ var (
 	ErrVarIntTooLarge = errors.New("VarInt too large")
 )
 
-func WriteVarInt(value int32) []byte {
-	buf := make([]byte, 0)
+type VarInt int32
+
+func (vi *VarInt) Write(w io.Writer) error {
+	value := *vi
 	for cont := true; cont; cont = value != 0 {
-		temp := byte(value & 0x7F)
+		temp := UnsignedByte(value & 0x7F)
 
 		// Casting value to a uint to get a logical shift
-		value = int32(uint32(value) >> 7)
+		value = VarInt(uint32(value) >> 7)
 
 		if value != 0 {
 			temp |= 0x80
 		}
 
-		buf = append(buf, WriteUnsignedByte(temp)[0])
+		if err := temp.Write(w); err != nil {
+			return err
+		}
 	}
 
-	return buf
+	return nil
 }
 
-func ReadVarInt(r io.Reader) (int32, error) {
-	var numRead uint
+func (vi *VarInt) Read(r io.Reader) error {
+	var numRead int
 	var result int32
-	var read uint8
+	var read UnsignedByte
 
 	for cont := true; cont; cont = (read & 0x80) != 0 {
 		var err error
-		read, err = ReadUnsignedByte(r)
+		err = read.Read(r)
 
 		if err != nil {
-			return 0, err
+			return err
 		}
 
 		value := read & 0x7F
@@ -53,9 +57,11 @@ func ReadVarInt(r io.Reader) (int32, error) {
 		numRead++
 
 		if numRead > VarIntMaxByteSize {
-			return 0, ErrVarIntTooLarge
+			return ErrVarIntTooLarge
 		}
 	}
 
-	return result, nil
+	*vi = VarInt(result)
+
+	return nil
 }

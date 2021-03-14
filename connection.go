@@ -82,6 +82,7 @@ func WrapConnection(transport net.Conn, side Side) Connection {
 	conn.registerPacket(&LoginDisconnectPacket{})
 	conn.registerPacket(&JoinGamePacket{})
 	conn.registerPacket(&PlayerPositionLookPacket{})
+	conn.registerPacket(&PluginMessagePacket{})
 
 	return conn
 }
@@ -90,6 +91,8 @@ func WrapConnection(transport net.Conn, side Side) Connection {
 
 // Reads a packet from the connection
 func (c *connection) ReadPacket(ctx context.Context) (Packet, error) {
+	var err error
+
 	if ctx == nil {
 		panic("nil context")
 	}
@@ -103,9 +106,8 @@ func (c *connection) ReadPacket(ctx context.Context) (Packet, error) {
 	}
 
 	// Read packet length
-	length, err := enc.ReadVarInt(c.transport)
-
-	if err != nil {
+	var length enc.VarInt
+	if err = length.Read(c.transport); err != nil {
 		return nil, fmt.Errorf("could not read packet length: %w", err)
 	}
 
@@ -121,21 +123,21 @@ func (c *connection) ReadPacket(ctx context.Context) (Packet, error) {
 
 	// Read complete packet into memory
 	data := make([]byte, length)
-
 	if _, err = io.ReadAtLeast(c.transport, data, int(length)); err != nil {
 		return nil, fmt.Errorf("could not read packet from connection: %w", err)
 	}
 
-	// Create packetbuffer from data
-	packetBuffer := NewPacketReader(bytes.NewReader(data))
+	// Reader for data buffer
+	reader := bytes.NewReader(data)
 
-	pID, err := packetBuffer.ReadVarInt()
-
-	if err != nil {
+	// Read packet ID
+	var pID enc.VarInt
+	if err = pID.Read(reader); err != nil {
 		return nil, fmt.Errorf("could not decode packet ID: %w", err)
 	}
 
-	packet, err := c.getPacketTypeByID(pID)
+	// Lookup packet type
+	packet, err := c.getPacketTypeByID(int32(pID))
 
 	if err != nil {
 		return nil, err
@@ -144,9 +146,7 @@ func (c *connection) ReadPacket(ctx context.Context) (Packet, error) {
 	log.Printf("[Recv] %s, %d: %s\n", c.state, pID, packet.String())
 
 	// Decode packet
-	err = packet.Unmarshal(packetBuffer)
-
-	if err != nil {
+	if err = packet.Read(reader); err != nil {
 		return nil, fmt.Errorf("could not decode packet data: %w", err)
 	}
 
@@ -179,21 +179,25 @@ func (c *connection) WritePacket(ctx context.Context, packetToWrite Packet) erro
 
 	log.Printf("[Send] %s, %d: %s\n", c.state, packetInfo.ID, packetToWrite.String())
 
-	buffer := new(bytes.Buffer)
-	packetBuffer := NewPacketBuffer(buffer)
+	var buffer bytes.Buffer
+
+	packetId := enc.VarInt(packetInfo.ID)
 
 	// Write packet ID to buffer
-	if err := packetBuffer.WriteVarInt(packetInfo.ID); err != nil {
+	if err := packetId.Write(&buffer); err != nil {
 		return fmt.Errorf("unable to write packet id to buffer: %w", err)
 	}
 
 	// Write packet data to buffer
-	if err := packetToWrite.Marshal(packetBuffer); err != nil {
+	if err := packetToWrite.Write(&buffer); err != nil {
 		return fmt.Errorf("could not encode packet data: %w", err)
 	}
 
+	// Get packet length
+	length := enc.VarInt(buffer.Len())
+
 	// Write packet length to connection
-	if _, err := c.transport.Write(enc.WriteVarInt(int32(buffer.Len()))); err != nil {
+	if err := length.Write(c.transport); err != nil {
 		return fmt.Errorf("could not write packet length: %w", err)
 	}
 

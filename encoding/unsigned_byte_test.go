@@ -8,7 +8,7 @@ import (
 
 func TestWriteUnsignedByte(t *testing.T) {
 	tests := []struct {
-		Value    uint8
+		Value    UnsignedByte
 		Expected []byte
 	}{
 		{Value: 0, Expected: []byte{0x00}},
@@ -17,19 +17,27 @@ func TestWriteUnsignedByte(t *testing.T) {
 		{Value: math.MaxUint8, Expected: []byte{0xff}},
 	}
 
+	var buff bytes.Buffer
+
 	for _, test := range tests {
-		actual := WriteUnsignedByte(test.Value)
+		if err := test.Value.Write(&buff); err != nil {
+			t.Error(err)
+		}
+
+		actual := buff.Bytes()
 
 		if bytes.Compare(test.Expected, actual) != 0 {
 			// Not equal
 			t.Errorf("Unable to convert %d: %v != %v", test.Value, actual, test.Expected)
 		}
+
+		buff.Reset()
 	}
 }
 
 func TestReadUnsignedByte(t *testing.T) {
 	tests := []struct {
-		Expected uint8
+		Expected UnsignedByte
 		Value    []byte
 	}{
 		{Expected: 0, Value: []byte{0x00}},
@@ -41,12 +49,10 @@ func TestReadUnsignedByte(t *testing.T) {
 	var buff bytes.Buffer
 
 	for _, test := range tests {
-
 		buff.Write(test.Value)
 
-		actual, err := ReadUnsignedByte(&buff)
-
-		if err != nil {
+		var actual UnsignedByte
+		if err := actual.Read(&buff); err != nil {
 			t.Error(err)
 		}
 

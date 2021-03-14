@@ -1,11 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"github.com/Raqbit/mcproto"
+	"github.com/Raqbit/mcproto/channel"
+	enc "github.com/Raqbit/mcproto/encoding"
 	"github.com/google/uuid"
 	"io"
 	"log"
@@ -89,7 +90,7 @@ func handleClientSettingsPacket(_ mcproto.Connection, _ *mcproto.ClientSettingsP
 
 func handleLoginPacket(conn mcproto.Connection, v *mcproto.LoginStartPacket) error {
 	playerUuid, _ := uuid.NewRandom()
-	err := conn.WritePacket(context.Background(), &mcproto.LoginSuccessPacket{UUID: playerUuid, Username: v.Name})
+	err := conn.WritePacket(context.Background(), &mcproto.LoginSuccessPacket{UUID: enc.UUID(playerUuid), Username: v.Name})
 
 	if err != nil {
 		return fmt.Errorf("could not write login success packet: %w", err)
@@ -98,7 +99,7 @@ func handleLoginPacket(conn mcproto.Connection, v *mcproto.LoginStartPacket) err
 	conn.SwitchState(mcproto.ConnectionStatePlay)
 
 	err = conn.WritePacket(context.Background(), &mcproto.JoinGamePacket{
-		PlayerID:            genRandomEid(),
+		PlayerID:            enc.Int(genRandomEid()),
 		GameMode:            1,
 		Dimension:           0,
 		HashedSeed:          0,
@@ -113,16 +114,11 @@ func handleLoginPacket(conn mcproto.Connection, v *mcproto.LoginStartPacket) err
 		return fmt.Errorf("could not write join game packet: %w", err)
 	}
 
-	data := mcproto.NewPacketBuffer(new(bytes.Buffer))
-	err = data.WriteString("mcproto custom")
-
-	if err != nil {
-		return fmt.Errorf("could not write channel data")
-	}
-
 	err = conn.WritePacket(context.Background(), &mcproto.PluginMessagePacket{
-		Channel: mcproto.NewIdentifier("minecraft", "brand"),
-		Data:    data,
+		Channel: channel.BrandChannelID,
+		Data: &channel.BrandChannel{
+			Brand: "mcproto custom",
+		},
 	})
 
 	if err != nil {
@@ -195,6 +191,8 @@ func handleHandshakePacket(conn mcproto.Connection, p *mcproto.HandshakePacket) 
 	if p.ProtoVer != ProtocolVersion {
 		return fmt.Errorf("unsupported protocol version: %d", p.ProtoVer)
 	}
+
+	fmt.Println(p.NextState)
 
 	if p.NextState != mcproto.ConnectionStateStatus && p.NextState != mcproto.ConnectionStateLogin {
 		return fmt.Errorf("handshake packet with invalid next state")

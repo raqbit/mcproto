@@ -1,15 +1,21 @@
 package mcproto
 
+import (
+	enc "github.com/Raqbit/mcproto/encoding"
+)
+
+//go:generate go run ../tools/genpacket/genpacket.go -packet=PlayerPositionLookPacket -output=player_position_look_gen.go
+
 const PlayerPositionLookPacketID int32 = 0x36
 
 type PlayerPositionLookPacket struct {
-	X          float64
-	Y          float64
-	Z          float64
-	Yaw        float32
-	Pitch      float32
-	Flags      uint8
-	TeleportID int32
+	X          enc.Double
+	Y          enc.Double
+	Z          enc.Double
+	Yaw        enc.Float
+	Pitch      enc.Float
+	Flags      enc.Byte
+	TeleportID enc.VarInt
 }
 
 func (*PlayerPositionLookPacket) String() string {
@@ -22,72 +28,4 @@ func (*PlayerPositionLookPacket) Info() PacketInfo {
 		Direction:       ClientBound,
 		ConnectionState: ConnectionStatePlay,
 	}
-}
-
-func (p *PlayerPositionLookPacket) Marshal(w PacketWriter) error {
-	var err error
-
-	if err = w.WriteDouble(p.X); err != nil {
-		return err
-	}
-
-	if err = w.WriteDouble(p.Y); err != nil {
-		return err
-	}
-
-	if err = w.WriteDouble(p.Z); err != nil {
-		return err
-	}
-
-	if err = w.WriteFloat(p.Yaw); err != nil {
-		return err
-	}
-
-	if err = w.WriteFloat(p.Pitch); err != nil {
-		return err
-	}
-
-	if err = w.WriteUnsignedByte(p.Flags); err != nil {
-		return err
-	}
-
-	if err = w.WriteVarInt(p.TeleportID); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (p *PlayerPositionLookPacket) Unmarshal(r PacketReader) error {
-	var err error
-
-	if p.X, err = r.ReadDouble(); err != nil {
-		return err
-	}
-
-	if p.Y, err = r.ReadDouble(); err != nil {
-		return err
-	}
-
-	if p.Z, err = r.ReadDouble(); err != nil {
-		return err
-	}
-
-	if p.Yaw, err = r.ReadFloat(); err != nil {
-		return err
-	}
-
-	if p.Pitch, err = r.ReadFloat(); err != nil {
-		return err
-	}
-
-	if p.Flags, err = r.ReadUnsignedByte(); err != nil {
-		return err
-	}
-
-	if p.TeleportID, err = r.ReadVarInt(); err != nil {
-		return err
-	}
-
-	return nil
 }

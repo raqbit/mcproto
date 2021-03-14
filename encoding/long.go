@@ -5,14 +5,12 @@ import (
 	"io"
 )
 
-func WriteLong(value int64) []byte {
-	buf := make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, uint64(value))
-	return buf
+type Long int64
+
+func (l *Long) Write(w io.Writer) error {
+	return binary.Write(w, binary.BigEndian, l)
 }
 
-func ReadLong(buff io.Reader) (int64, error) {
-	var long int64
-	err := binary.Read(buff, binary.BigEndian, &long)
-	return long, err
+func (l *Long) Read(r io.Reader) error {
+	return binary.Read(r, binary.BigEndian, l)
 }
