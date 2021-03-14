@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	enc "github.com/Raqbit/mcproto/encoding"
+	"github.com/Raqbit/mcproto/packet"
+	"github.com/Raqbit/mcproto/types"
 	"io"
 	"log"
 	"net"
@@ -20,22 +22,22 @@ var (
 // Connection represents a connection
 // to a Minecraft server or client.
 type Connection interface {
-	ReadPacket(context.Context) (Packet, error)
-	WritePacket(context.Context, Packet) error
+	ReadPacket(context.Context) (packet.Packet, error)
+	WritePacket(context.Context, packet.Packet) error
 	Close() error
-	SwitchState(state ConnectionState)
+	SwitchState(state types.ConnectionState)
 }
 
 type connection struct {
 	transport net.Conn
-	state     ConnectionState
-	side      Side
-	packets   map[PacketInfo]Packet
+	state     types.ConnectionState
+	side      types.Side
+	packets   map[packet.PacketInfo]packet.Packet
 }
 
 // Dial connects to the specified address and creates
 // a new Connection for it.
-func Dial(address string, side Side) (Connection, error) {
+func Dial(address string, side types.Side) (Connection, error) {
 	return DialContext(context.Background(), address, side)
 }
 
@@ -45,7 +47,7 @@ func Dial(address string, side Side) (Connection, error) {
 // The provided Context must be non-nil. If the context expires before
 // the connection is complete, an error is returned. Once successfully
 // connected, any expiration of the context will not affect the connection.
-func DialContext(ctx context.Context, address string, side Side) (Connection, error) {
+func DialContext(ctx context.Context, address string, side types.Side) (Connection, error) {
 	// Make TCP connection
 	var d net.Dialer
 	tcpConn, err := d.DialContext(ctx, "tcp", address)
@@ -59,30 +61,30 @@ func DialContext(ctx context.Context, address string, side Side) (Connection, er
 
 // WrapConnection wraps the given connection with a Connection,
 // so it can be used for sending/receiving Minecraft packets.
-func WrapConnection(transport net.Conn, side Side) Connection {
+func WrapConnection(transport net.Conn, side types.Side) Connection {
 	conn := &connection{
 		transport: transport,
-		state:     ConnectionStateHandshake,
+		state:     types.ConnectionStateHandshake,
 		side:      side,
-		packets:   make(map[PacketInfo]Packet),
+		packets:   make(map[packet.PacketInfo]packet.Packet),
 	}
 
 	// Server bound packets
-	conn.registerPacket(&HandshakePacket{})
-	conn.registerPacket(&ServerQueryPacket{})
-	conn.registerPacket(&PingPacket{})
-	conn.registerPacket(&LoginStartPacket{})
-	conn.registerPacket(&ClientSettingsPacket{})
+	conn.registerPacket(&packet.HandshakePacket{})
+	conn.registerPacket(&packet.ServerQueryPacket{})
+	conn.registerPacket(&packet.PingPacket{})
+	conn.registerPacket(&packet.LoginStartPacket{})
+	conn.registerPacket(&packet.ClientSettingsPacket{})
 
 	// Client bound packets
-	conn.registerPacket(&PongPacket{})
-	conn.registerPacket(&LoginSuccessPacket{})
-	conn.registerPacket(&ChatMessagePacket{})
-	conn.registerPacket(&ServerInfoPacket{})
-	conn.registerPacket(&LoginDisconnectPacket{})
-	conn.registerPacket(&JoinGamePacket{})
-	conn.registerPacket(&PlayerPositionLookPacket{})
-	conn.registerPacket(&PluginMessagePacket{})
+	conn.registerPacket(&packet.PongPacket{})
+	conn.registerPacket(&packet.LoginSuccessPacket{})
+	conn.registerPacket(&packet.ChatMessagePacket{})
+	conn.registerPacket(&packet.ServerInfoPacket{})
+	conn.registerPacket(&packet.LoginDisconnectPacket{})
+	conn.registerPacket(&packet.JoinGamePacket{})
+	conn.registerPacket(&packet.PlayerPositionLookPacket{})
+	conn.registerPacket(&packet.PluginMessagePacket{})
 
 	return conn
 }
@@ -90,7 +92,7 @@ func WrapConnection(transport net.Conn, side Side) Connection {
 // TODO: Make cancel-based contexts work for ReadPacket & WritePacket
 
 // Reads a packet from the connection
-func (c *connection) ReadPacket(ctx context.Context) (Packet, error) {
+func (c *connection) ReadPacket(ctx context.Context) (packet.Packet, error) {
 	var err error
 
 	if ctx == nil {
@@ -117,8 +119,8 @@ func (c *connection) ReadPacket(ctx context.Context) (Packet, error) {
 	}
 
 	// Catch invalid packet lengths
-	if length < 1 || length > MaxPacketLength {
-		return nil, ErrInvalidPacketLength
+	if length < 1 || length > packet.MaxPacketLength {
+		return nil, packet.ErrInvalidPacketLength
 	}
 
 	// Read complete packet into memory
@@ -154,7 +156,7 @@ func (c *connection) ReadPacket(ctx context.Context) (Packet, error) {
 }
 
 // Writes a packet to the connection
-func (c *connection) WritePacket(ctx context.Context, packetToWrite Packet) error {
+func (c *connection) WritePacket(ctx context.Context, packetToWrite packet.Packet) error {
 	if ctx == nil {
 		panic("nil context")
 	}
@@ -209,23 +211,23 @@ func (c *connection) WritePacket(ctx context.Context, packetToWrite Packet) erro
 	return nil
 }
 
-func (c *connection) SwitchState(state ConnectionState) {
+func (c *connection) SwitchState(state types.ConnectionState) {
 	c.state = state
 }
 
-func (c *connection) getReadDirection() PacketDirection {
-	if c.side == ServerSide {
-		return ServerBound
+func (c *connection) getReadDirection() types.PacketDirection {
+	if c.side == types.ServerSide {
+		return types.ServerBound
 	} else {
-		return ClientBound
+		return types.ClientBound
 	}
 }
 
-func (c *connection) getWriteDirection() PacketDirection {
-	if c.side == ServerSide {
-		return ClientBound
+func (c *connection) getWriteDirection() types.PacketDirection {
+	if c.side == types.ServerSide {
+		return types.ClientBound
 	} else {
-		return ServerBound
+		return types.ServerBound
 	}
 }
 
@@ -233,12 +235,12 @@ func (c *connection) Close() error {
 	return c.transport.Close()
 }
 
-func (c *connection) registerPacket(packet Packet) {
+func (c *connection) registerPacket(packet packet.Packet) {
 	c.packets[packet.Info()] = packet
 }
 
-func (c *connection) getPacketTypeByID(id int32) (Packet, error) {
-	p, ok := c.packets[PacketInfo{
+func (c *connection) getPacketTypeByID(id int32) (packet.Packet, error) {
+	p, ok := c.packets[packet.PacketInfo{
 		ID:              id,
 		Direction:       c.getReadDirection(),
 		ConnectionState: c.state,
