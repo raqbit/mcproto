@@ -8,7 +8,7 @@ import (
 
 func TestWriteFloat(t *testing.T) {
 	tests := []struct {
-		Value    float32
+		Value    Float
 		Expected []byte
 	}{
 		{Value: 0.0000000002, Expected: []byte{0x2F, 0x5B, 0xE6, 0xFF}},
@@ -16,19 +16,27 @@ func TestWriteFloat(t *testing.T) {
 		{Value: math.MaxFloat32, Expected: []byte{0x7f, 0x7f, 0xff, 0xff}},
 	}
 
+	var buff bytes.Buffer
+
 	for _, test := range tests {
-		actual := WriteFloat(test.Value)
+		if err := test.Value.Write(&buff); err != nil {
+			t.Error(err)
+		}
+
+		actual := buff.Bytes()
 
 		if bytes.Compare(test.Expected, actual) != 0 {
 			// Not equal
 			t.Errorf("Unable to convert %f: %v != %v", test.Value, actual, test.Expected)
 		}
+
+		buff.Reset()
 	}
 }
 
 func TestReadFloat(t *testing.T) {
 	tests := []struct {
-		Expected float32
+		Expected Float
 		Value    []byte
 	}{
 		{Expected: 0.0000000002, Value: []byte{0x2F, 0x5B, 0xE6, 0xFF}},
@@ -39,12 +47,10 @@ func TestReadFloat(t *testing.T) {
 	var buff bytes.Buffer
 
 	for _, test := range tests {
-
 		buff.Write(test.Value)
 
-		actual, err := ReadFloat(&buff)
-
-		if err != nil {
+		var actual Float
+		if err := actual.Read(&buff); err != nil {
 			t.Error(err)
 		}
 

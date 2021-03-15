@@ -6,6 +6,9 @@ import (
 	"flag"
 	"fmt"
 	"github.com/Raqbit/mcproto"
+	enc "github.com/Raqbit/mcproto/encoding"
+	"github.com/Raqbit/mcproto/packet"
+	"github.com/Raqbit/mcproto/types"
 	"log"
 	"net"
 	"os"
@@ -33,43 +36,43 @@ func main() {
 
 	address := net.JoinHostPort(*ServerHost, strconv.Itoa(int(*ServerPort)))
 
-	conn, err := mcproto.Dial(address, mcproto.ClientSide)
+	conn, err := mcproto.Dial(address, types.ClientSide)
 
 	if err != nil {
 		log.Fatalf("tcp dial error: %s", err)
 	}
 
 	err = conn.WritePacket(ctx,
-		&mcproto.HandshakePacket{
+		&packet.HandshakePacket{
 			ProtoVer:   ProtocolVersion,
-			ServerAddr: *ServerHost,
-			ServerPort: uint16(*ServerPort),
-			NextState:  mcproto.ConnectionStateStatus,
+			ServerAddr: enc.String(*ServerHost),
+			ServerPort: enc.UnsignedShort(*ServerPort),
+			NextState:  types.ConnectionStateStatus,
 		})
 
 	// Actually update our connection as well
-	conn.SwitchState(mcproto.ConnectionStateStatus)
+	conn.SwitchState(types.ConnectionStateStatus)
 
 	if err != nil {
 		log.Fatalf("could not write handshake packet: %s", err)
 	}
 
-	err = conn.WritePacket(ctx, &mcproto.ServerQueryPacket{})
+	err = conn.WritePacket(ctx, &packet.ServerQueryPacket{})
 
 	if err != nil {
 		log.Fatalf("could not write request packet: %s", err)
 	}
 
-	packet, err := conn.ReadPacket(ctx)
+	resp, err := conn.ReadPacket(ctx)
 
 	if err != nil {
 		log.Fatalf("could not read response packet: %s", err)
 	}
 
-	response, ok := packet.(*mcproto.ServerInfoPacket)
+	response, ok := resp.(*packet.ServerInfoPacket)
 
 	if !ok {
-		log.Fatalf("Server sent unexpected packet: %s", packet.String())
+		log.Fatalf("Server sent unexpected packet: %s", resp.String())
 	}
 
 	jsonRes, _ := json.Marshal(response.Response)

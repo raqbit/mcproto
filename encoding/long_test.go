@@ -8,7 +8,7 @@ import (
 
 func TestWriteLong(t *testing.T) {
 	tests := []struct {
-		Value    int64
+		Value    Long
 		Expected []byte
 	}{
 		{Value: 0, Expected: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
@@ -18,20 +18,27 @@ func TestWriteLong(t *testing.T) {
 		{Value: math.MaxInt64, Expected: []byte{0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
 	}
 
+	var buff bytes.Buffer
+
 	for _, test := range tests {
-		actual := WriteLong(test.Value)
+		if err := test.Value.Write(&buff); err != nil {
+			t.Error(err)
+		}
+
+		actual := buff.Bytes()
 
 		if bytes.Compare(test.Expected, actual) != 0 {
 			// Not equal
 			t.Errorf("Unable to convert %d: %v != %v", test.Value, actual, test.Expected)
 		}
 
+		buff.Reset()
 	}
 }
 
 func TestReadLong(t *testing.T) {
 	tests := []struct {
-		Expected int64
+		Expected Long
 		Value    []byte
 	}{
 		{Expected: 0, Value: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
@@ -46,9 +53,8 @@ func TestReadLong(t *testing.T) {
 	for _, test := range tests {
 		buff.Write(test.Value)
 
-		actual, err := ReadLong(&buff)
-
-		if err != nil {
+		var actual Long
+		if err := actual.Read(&buff); err != nil {
 			t.Error(err)
 		}
 

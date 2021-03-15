@@ -9,7 +9,7 @@ import (
 
 func TestWriteVarInt(t *testing.T) {
 	tests := []struct {
-		Value    int32
+		Value    VarInt
 		Expected []byte
 	}{
 		{Value: 0, Expected: []byte{0x00}},
@@ -24,20 +24,27 @@ func TestWriteVarInt(t *testing.T) {
 		{Value: -2147483648, Expected: []byte{0x80, 0x80, 0x80, 0x80, 0x08}},
 	}
 
+	var buff bytes.Buffer
+
 	for _, test := range tests {
-		actual := WriteVarInt(test.Value)
+		if err := test.Value.Write(&buff); err != nil {
+			t.Error(err)
+		}
+
+		actual := buff.Bytes()
 
 		if bytes.Compare(test.Expected, actual) != 0 {
 			// Not equal
 			t.Errorf("Unable to convert %d: %v != %v", test.Value, actual, test.Expected)
 		}
 
+		buff.Reset()
 	}
 }
 
 func TestReadVarInt(t *testing.T) {
 	tests := []struct {
-		Expected int32
+		Expected VarInt
 		Value    []byte
 	}{
 		{Expected: 0, Value: []byte{0x00}},
@@ -57,9 +64,8 @@ func TestReadVarInt(t *testing.T) {
 	for _, test := range tests {
 		buff.Write(test.Value)
 
-		actual, err := ReadVarInt(&buff)
-
-		if err != nil {
+		var actual VarInt
+		if err := actual.Read(&buff); err != nil {
 			t.Error(err)
 		}
 
@@ -75,9 +81,8 @@ func TestReadVarInt(t *testing.T) {
 func TestReadVarIntReadError(t *testing.T) {
 	var buff bytes.Buffer
 
-	_, err := ReadVarInt(&buff)
-
-	if !errors.Is(err, io.EOF) {
+	var actual VarInt
+	if err := actual.Read(&buff); !errors.Is(err, io.EOF) {
 		t.Errorf("should get read error")
 	}
 }
@@ -87,9 +92,8 @@ func TestReadVarIntTooLarge(t *testing.T) {
 
 	buff.Write([]byte{0x80, 0x80, 0x80, 0x80, 0x80, 0x01})
 
-	_, err := ReadVarInt(&buff)
-
-	if !errors.Is(err, ErrVarIntTooLarge) {
+	var actual VarInt
+	if err := actual.Read(&buff); !errors.Is(err, ErrVarIntTooLarge) {
 		t.Errorf("should get error for too large VarInt")
 	}
 }

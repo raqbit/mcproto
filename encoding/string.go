@@ -3,6 +3,7 @@ package encoding
 import (
 	"errors"
 	"io"
+	"math"
 )
 
 var (
@@ -11,24 +12,41 @@ var (
 	ErrStringLengthTooLarge = errors.New("length of String is too large")
 )
 
-func WriteString(str string) []byte {
-	b := WriteVarInt(int32(len(str)))
-	b = append(b, []byte(str)...)
-	return b
+type String string
+
+func (s *String) Write(w io.Writer) error {
+	var err error
+	l := VarInt(len(*s))
+
+	if err = l.Write(w); err != nil {
+		return err
+	}
+
+	_, err = w.Write([]byte(*s))
+	return err
 }
 
-func ReadString(r io.Reader, maxLength int32) (string, error) {
-	l, err := ReadVarInt(r)
-	if err != nil {
-		return "", nil
+func (s *String) Read(r io.Reader) error {
+	var err error
+	var l VarInt
+
+	if err = l.Read(r); err != nil {
+		return err
 	}
 
 	// Checking if string size is valid
-	if l < 0 || l > maxLength {
-		return "", ErrStringLengthTooLarge
+	if l < 0 || int(l) > math.MaxInt16 {
+		return ErrStringLengthTooLarge
 	}
 
 	stringBuff := make([]byte, int(l))
-	_, err = io.ReadFull(r, stringBuff)
-	return string(stringBuff), err
+	_, err = io.ReadAtLeast(r, stringBuff, int(l))
+
+	if err != nil {
+		return err
+	}
+
+	*s = String(stringBuff)
+
+	return nil
 }

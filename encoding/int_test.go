@@ -7,7 +7,7 @@ import (
 
 func TestWriteInt(t *testing.T) {
 	tests := []struct {
-		Value    int32
+		Value    Int
 		Expected []byte
 	}{
 		{Value: 0, Expected: []byte{0x00, 0x00, 0x00, 0x00}},
@@ -17,20 +17,27 @@ func TestWriteInt(t *testing.T) {
 		{Value: -2147483648, Expected: []byte{0x80, 0x00, 0x00, 0x00}},
 	}
 
+	var buff bytes.Buffer
+
 	for _, test := range tests {
-		actual := WriteInt(test.Value)
+		if err := test.Value.Write(&buff); err != nil {
+			t.Error(err)
+		}
+
+		actual := buff.Bytes()
 
 		if bytes.Compare(test.Expected, actual) != 0 {
 			// Not equal
 			t.Errorf("Unable to convert %d: %v != %v", test.Value, actual, test.Expected)
 		}
 
+		buff.Reset()
 	}
 }
 
 func TestReadInt(t *testing.T) {
 	tests := []struct {
-		Expected int32
+		Expected Int
 		Value    []byte
 	}{
 		{Expected: 0, Value: []byte{0x00, 0x00, 0x00, 0x00}},
@@ -45,9 +52,8 @@ func TestReadInt(t *testing.T) {
 	for _, test := range tests {
 		buff.Write(test.Value)
 
-		actual, err := ReadInt(&buff)
-
-		if err != nil {
+		var actual Int
+		if err := actual.Read(&buff); err != nil {
 			t.Error(err)
 		}
 

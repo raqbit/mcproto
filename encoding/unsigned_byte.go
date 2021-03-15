@@ -1,13 +1,16 @@
 package encoding
 
-import "io"
+import (
+	"encoding/binary"
+	"io"
+)
 
-func ReadUnsignedByte(r io.Reader) (uint8, error) {
-	var bytes [1]byte
-	_, err := r.Read(bytes[:1])
-	return bytes[0], err
+type UnsignedByte uint8
+
+func (ub *UnsignedByte) Write(w io.Writer) error {
+	return binary.Write(w, binary.BigEndian, ub)
 }
 
-func WriteUnsignedByte(value uint8) []byte {
-	return []byte{value}
+func (ub *UnsignedByte) Read(r io.Reader) error {
+	return binary.Read(r, binary.BigEndian, ub)
 }
