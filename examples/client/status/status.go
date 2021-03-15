@@ -10,7 +10,6 @@ import (
 	"github.com/Raqbit/mcproto/packet"
 	"github.com/Raqbit/mcproto/types"
 	"log"
-	"net"
 	"os"
 	"strconv"
 )
@@ -21,7 +20,7 @@ const (
 
 var (
 	ServerHost = flag.String("host", "", "server host")
-	ServerPort = flag.Uint("port", 25565, "server port")
+	ServerPort = flag.String("port", "", "server port")
 )
 
 func main() {
@@ -34,24 +33,29 @@ func main() {
 
 	ctx := context.Background()
 
-	address := net.JoinHostPort(*ServerHost, strconv.Itoa(int(*ServerPort)))
-
-	conn, err := mcproto.Dial(address, types.ClientSide)
+	conn, err := mcproto.Dial(*ServerHost, *ServerPort, types.ClientSide)
 
 	if err != nil {
-		log.Fatalf("tcp dial error: %s", err)
+		log.Fatalf("mcproto dial error: %s", err)
+	}
+
+	addr := conn.RemoteAddress()
+	port, err := strconv.Atoi(addr.Port)
+
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	err = conn.WritePacket(ctx,
 		&packet.HandshakePacket{
 			ProtoVer:   ProtocolVersion,
-			ServerAddr: enc.String(*ServerHost),
-			ServerPort: enc.UnsignedShort(*ServerPort),
+			ServerAddr: enc.String(addr.Host),
+			ServerPort: enc.UnsignedShort(port),
 			NextState:  types.ConnectionStateStatus,
 		})
 
 	// Actually update our connection as well
-	conn.SwitchState(types.ConnectionStateStatus)
+	conn.SetState(types.ConnectionStateStatus)
 
 	if err != nil {
 		log.Fatalf("could not write handshake packet: %s", err)

@@ -14,6 +14,10 @@ import (
 	"time"
 )
 
+const (
+	DefaultMinecraftPort = "25565"
+)
+
 var (
 	ErrConnectionState = errors.New("connection has invalid state for packet type")
 	ErrDirection       = errors.New("packet being sent in wrong direction")
@@ -24,11 +28,18 @@ var (
 type Connection interface {
 	ReadPacket(context.Context) (packet.Packet, error)
 	WritePacket(context.Context, packet.Packet) error
+	RemoteAddress() Address
 	Close() error
-	SwitchState(state types.ConnectionState)
+	SetState(state types.ConnectionState)
+}
+
+type Address struct {
+	Host string
+	Port string
 }
 
 type connection struct {
+	remote    Address
 	transport net.Conn
 	state     types.ConnectionState
 	side      types.Side
@@ -37,32 +48,44 @@ type connection struct {
 
 // Dial connects to the specified address and creates
 // a new Connection for it.
-func Dial(address string, side types.Side) (Connection, error) {
-	return DialContext(context.Background(), address, side)
+func Dial(host string, port string, side types.Side) (Connection, error) {
+	return DialContext(context.Background(), host, port, side)
 }
 
-// Dial creates a TCP connection with specified address
-// and creates a new Connection for it.
+// Dial creates a TCP connection with specified host & port
+// and creates a new Connection for it. If the specified
+// port is an empty string, the Minecraft default of 25565 will be used.
 //
 // The provided Context must be non-nil. If the context expires before
 // the connection is complete, an error is returned. Once successfully
-// connected, any expiration of the context will not affect the connection.
-func DialContext(ctx context.Context, address string, side types.Side) (Connection, error) {
+// connected, any expiration of this context will not affect the connection.
+func DialContext(ctx context.Context, host string, port string, side types.Side) (Connection, error) {
+	if port == "" {
+		port = DefaultMinecraftPort
+	}
+
 	// Make TCP connection
 	var d net.Dialer
-	tcpConn, err := d.DialContext(ctx, "tcp", address)
+	tcpConn, err := d.DialContext(ctx, "tcp", net.JoinHostPort(host, port))
 
 	if err != nil {
 		return nil, err
 	}
 
-	return WrapConnection(tcpConn, side), nil
+	return wrapConnection(tcpConn, Address{host, port}, side), nil
 }
 
 // WrapConnection wraps the given connection with a Connection,
 // so it can be used for sending/receiving Minecraft packets.
 func WrapConnection(transport net.Conn, side types.Side) Connection {
+	// Ignoring error, conn remote address should always be valid
+	host, port, _ := net.SplitHostPort(transport.RemoteAddr().String())
+	return wrapConnection(transport, Address{host, port}, side)
+}
+
+func wrapConnection(transport net.Conn, addr Address, side types.Side) Connection {
 	conn := &connection{
+		remote:    addr,
 		transport: transport,
 		state:     types.ConnectionStateHandshake,
 		side:      side,
@@ -91,7 +114,14 @@ func WrapConnection(transport net.Conn, side types.Side) Connection {
 
 // TODO: Make cancel-based contexts work for ReadPacket & WritePacket
 
-// Reads a packet from the connection
+// ReadPacket reads a Minecraft protocol packet from the connection.
+// ReadPacket will also try to parse the contents of this packet and return
+// an error if the given packet ID is unknown or if the known packet format
+// did not decode correctly.
+//
+// The provided Context must be non-nil. If the context expires before
+// a packet was read, an error is returned. Cancelling this context
+// currently does not stop the packet read, only a deadline (or timeout) works.
 func (c *connection) ReadPacket(ctx context.Context) (packet.Packet, error) {
 	var err error
 
@@ -155,7 +185,11 @@ func (c *connection) ReadPacket(ctx context.Context) (packet.Packet, error) {
 	return packet, nil
 }
 
-// Writes a packet to the connection
+// WritePacket writes a Minecraft protocol packet to the connection.
+//
+// The provided Context must be non-nil. If the context expires before
+// a packet was written, an error is returned. Cancelling this context
+// currently does not stop the packet write, only a deadline (or timeout) works.
 func (c *connection) WritePacket(ctx context.Context, packetToWrite packet.Packet) error {
 	if ctx == nil {
 		panic("nil context")
@@ -211,8 +245,23 @@ func (c *connection) WritePacket(ctx context.Context, packetToWrite packet.Packe
 	return nil
 }
 
-func (c *connection) SwitchState(state types.ConnectionState) {
+// SetState switches the protocol to a different state,
+// which changes the meaning of packet IDs.
+func (c *connection) SetState(state types.ConnectionState) {
 	c.state = state
+}
+
+// RemoteAddress returns the remote address of the connected
+// party. Can for instance be used to get the
+// resolved hostname & port of a minecraft server.
+func (c *connection) RemoteAddress() Address {
+	return c.remote
+}
+
+// Close closes the connection. After this has been called,
+// the Connection should not be used anymore.
+func (c *connection) Close() error {
+	return c.transport.Close()
 }
 
 func (c *connection) getReadDirection() types.PacketDirection {
@@ -229,10 +278,6 @@ func (c *connection) getWriteDirection() types.PacketDirection {
 	} else {
 		return types.ServerBound
 	}
-}
-
-func (c *connection) Close() error {
-	return c.transport.Close()
 }
 
 func (c *connection) registerPacket(packet packet.Packet) {

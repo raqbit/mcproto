@@ -98,7 +98,7 @@ func handleLoginPacket(conn mcproto.Connection, v *packet.LoginStartPacket) erro
 		return fmt.Errorf("could not write login success packet: %w", err)
 	}
 
-	conn.SwitchState(types.ConnectionStatePlay)
+	conn.SetState(types.ConnectionStatePlay)
 
 	err = conn.WritePacket(context.Background(), &packet.JoinGamePacket{
 		PlayerID:            enc.Int(genRandomEid()),
@@ -194,12 +194,10 @@ func handleHandshakePacket(conn mcproto.Connection, p *packet.HandshakePacket) e
 		return fmt.Errorf("unsupported protocol version: %d", p.ProtoVer)
 	}
 
-	fmt.Println(p.NextState)
-
 	if p.NextState != types.ConnectionStateStatus && p.NextState != types.ConnectionStateLogin {
 		return fmt.Errorf("handshake packet with invalid next state")
 	} else {
-		conn.SwitchState(p.NextState)
+		conn.SetState(p.NextState)
 		return nil
 	}
 }
