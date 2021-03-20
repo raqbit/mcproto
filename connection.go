@@ -48,8 +48,8 @@ type connection struct {
 // the address that was connected to.
 //
 // See DialContext for more information.
-func Dial(host string, port string, side types.Side) (Connection, string, error) {
-	return DialContext(context.Background(), host, port, side)
+func Dial(host string, port string) (Connection, string, error) {
+	return DialContext(context.Background(), host, port)
 }
 
 // DialContext creates a TCP connection with specified host & port
@@ -67,7 +67,7 @@ func Dial(host string, port string, side types.Side) (Connection, string, error)
 //
 // Will return the created Connection and the resolved address that
 // was connected to.
-func DialContext(ctx context.Context, host string, port string, side types.Side) (Connection, string, error) {
+func DialContext(ctx context.Context, host string, port string) (Connection, string, error) {
 	var resolver net.Resolver
 	var dialer net.Dialer
 
@@ -105,7 +105,7 @@ func DialContext(ctx context.Context, host string, port string, side types.Side)
 	}
 
 	// Wrap TCP connection in a wrapper for sending/receiving Minecraft packets
-	return WrapConnection(tcpConn, side), resolvedAddress, nil
+	return WrapConnection(tcpConn, types.ClientSide), resolvedAddress, nil
 }
 
 // WrapConnection wraps the given connection with a Connection,

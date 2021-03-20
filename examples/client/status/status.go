@@ -34,7 +34,7 @@ func main() {
 
 	ctx := context.Background()
 
-	conn, addr, err := mcproto.Dial(*ServerHost, *ServerPort, types.ClientSide)
+	conn, addr, err := mcproto.Dial(*ServerHost, *ServerPort)
 
 	if err != nil {
 		log.Fatalf("mcproto dial error: %s", err)
