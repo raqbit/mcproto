@@ -57,7 +57,7 @@ func handleConnection(tcpConn net.Conn) {
 			}
 
 			log.Printf("Error reading packet: %s", err)
-			continue
+			return
 		}
 
 		err = handlePacket(conn, p)

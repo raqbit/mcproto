@@ -19,8 +19,9 @@ const (
 )
 
 var (
-	ErrConnectionState = errors.New("connection has invalid state for packet type")
-	ErrDirection       = errors.New("packet being sent in wrong direction")
+	ErrConnectionState  = errors.New("connection has invalid state for packet type")
+	ErrDirection        = errors.New("packet being sent in wrong direction")
+	ErrLegacyServerPing = errors.New("not implemented: legacy server ping")
 )
 
 // Connection represents a connection
@@ -145,7 +146,7 @@ func (c *connection) ReadPacket(ctx context.Context) (packet.Packet, error) {
 
 	// TODO: Maybe handle legacy server ping? (https://wiki.vg/Server_List_Ping#1.6)
 	if length == 0xFE {
-		return nil, fmt.Errorf("not implemented: Legacy server ping")
+		return nil, ErrLegacyServerPing
 	}
 
 	// Catch invalid packet lengths
@@ -169,20 +170,20 @@ func (c *connection) ReadPacket(ctx context.Context) (packet.Packet, error) {
 	}
 
 	// Lookup packet type
-	packet, err := c.getPacketTypeByID(int32(pID))
+	pkt, err := c.getPacketTypeByID(int32(pID))
 
 	if err != nil {
 		return nil, err
 	}
 
-	log.Printf("[Recv] %s, %d: %s\n", c.state, pID, packet.String())
+	log.Printf("[Recv] %s, %d: %s\n", c.state, pID, pkt.String())
 
 	// Decode packet
-	if err = packet.Read(reader); err != nil {
+	if err = pkt.Read(reader); err != nil {
 		return nil, fmt.Errorf("could not decode packet data: %w", err)
 	}
 
-	return packet, nil
+	return pkt, nil
 }
 
 // WritePacket writes a Minecraft protocol packet to the connection.
