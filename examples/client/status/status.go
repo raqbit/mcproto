@@ -21,7 +21,7 @@ const (
 
 var (
 	ServerHost = flag.String("host", "", "server host")
-	ServerPort = flag.Uint("port", 25565, "server port")
+	ServerPort = flag.String("port", "", "server port")
 )
 
 func main() {
@@ -34,24 +34,34 @@ func main() {
 
 	ctx := context.Background()
 
-	address := net.JoinHostPort(*ServerHost, strconv.Itoa(int(*ServerPort)))
-
-	conn, err := mcproto.Dial(address, types.ClientSide)
+	conn, addr, err := mcproto.Dial(*ServerHost, *ServerPort)
 
 	if err != nil {
-		log.Fatalf("tcp dial error: %s", err)
+		log.Fatalf("mcproto dial error: %s", err)
+	}
+
+	host, portStr, err := net.SplitHostPort(addr)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	port, err := strconv.Atoi(portStr)
+
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	err = conn.WritePacket(ctx,
 		&packet.HandshakePacket{
 			ProtoVer:   ProtocolVersion,
-			ServerAddr: enc.String(*ServerHost),
-			ServerPort: enc.UnsignedShort(*ServerPort),
+			ServerAddr: enc.String(host),
+			ServerPort: enc.UnsignedShort(port),
 			NextState:  types.ConnectionStateStatus,
 		})
 
 	// Actually update our connection as well
-	conn.SwitchState(types.ConnectionStateStatus)
+	conn.SetState(types.ConnectionStateStatus)
 
 	if err != nil {
 		log.Fatalf("could not write handshake packet: %s", err)
