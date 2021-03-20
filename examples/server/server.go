@@ -40,11 +40,8 @@ func main() {
 	}
 }
 
-// TODO: timeouts
-// TODO: clean shutdown
-
 func handleConnection(tcpConn net.Conn) {
-	conn := mcproto.WrapConnection(tcpConn, types.ServerSide)
+	conn := mcproto.Wrap(tcpConn, mcproto.WithSide(types.ServerSide))
 	defer conn.Close()
 
 	for {
@@ -56,8 +53,12 @@ func handleConnection(tcpConn net.Conn) {
 				return
 			}
 
+			if errors.Is(err, mcproto.ErrLegacyServerPing) {
+				return
+			}
+
 			log.Printf("Error reading packet: %s", err)
-			return
+			continue
 		}
 
 		err = handlePacket(conn, p)

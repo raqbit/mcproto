@@ -9,7 +9,6 @@ import (
 	"github.com/Raqbit/mcproto/packet"
 	"github.com/Raqbit/mcproto/types"
 	"io"
-	"log"
 	"net"
 	"strconv"
 	"time"
@@ -37,10 +36,11 @@ type Connection interface {
 }
 
 type connection struct {
-	transport net.Conn
-	state     types.ConnectionState
-	side      types.Side
-	packets   map[packet.PacketInfo]packet.Packet
+	conn    net.Conn
+	state   types.ConnectionState
+	side    types.Side
+	packets map[packet.PacketInfo]packet.Packet
+	logger  Logger
 }
 
 // Dial connects to the specified address without timeout
@@ -48,8 +48,8 @@ type connection struct {
 // the address that was connected to.
 //
 // See DialContext for more information.
-func Dial(host string, port string) (Connection, string, error) {
-	return DialContext(context.Background(), host, port)
+func Dial(host string, port string, opts ...Option) (Connection, string, error) {
+	return DialContext(context.Background(), host, port, opts...)
 }
 
 // DialContext creates a TCP connection with specified host & port
@@ -65,9 +65,11 @@ func Dial(host string, port string) (Connection, string, error) {
 // the connection is complete, an error is returned. Once successfully
 // connected, any expiration of this context will not affect the connection.
 //
+// The given options will be applied to the created connection.
+//
 // Will return the created Connection and the resolved address that
 // was connected to.
-func DialContext(ctx context.Context, host string, port string) (Connection, string, error) {
+func DialContext(ctx context.Context, host string, port string, opts ...Option) (Connection, string, error) {
 	var resolver net.Resolver
 	var dialer net.Dialer
 
@@ -104,38 +106,56 @@ func DialContext(ctx context.Context, host string, port string) (Connection, str
 		return nil, resolvedAddress, err
 	}
 
+	// Set options
+	opts = append([]Option{
+		WithSide(types.ClientSide),
+	}, opts...)
+
 	// Wrap TCP connection in a wrapper for sending/receiving Minecraft packets
-	return WrapConnection(tcpConn, types.ClientSide), resolvedAddress, nil
+	return Wrap(tcpConn, opts...), resolvedAddress, nil
 }
 
-// WrapConnection wraps the given connection with a Connection,
+// Wrap wraps the given connection with a Connection,
 // so it can be used for sending/receiving Minecraft packets.
-func WrapConnection(transport net.Conn, side types.Side) Connection {
-	conn := &connection{
-		transport: transport,
-		state:     types.ConnectionStateHandshake,
-		side:      side,
-		packets:   make(map[packet.PacketInfo]packet.Packet),
+//
+// Wrap defaults its side to ServerSide, which means it will
+// interpret incoming packets as being server-bound.
+// If you are using Wrap for the client side, use
+// the WithSide option to configure this.
+//
+// The given options will be applied to the created connection.
+func Wrap(conn net.Conn, opts ...Option) Connection {
+	mcConn := &connection{
+		conn:    conn,
+		state:   types.ConnectionStateHandshake,
+		side:    types.ServerSide,
+		packets: make(map[packet.PacketInfo]packet.Packet),
+		logger:  noopLogger{},
 	}
 
 	// Server bound packets
-	conn.registerPacket(&packet.HandshakePacket{})
-	conn.registerPacket(&packet.ServerQueryPacket{})
-	conn.registerPacket(&packet.PingPacket{})
-	conn.registerPacket(&packet.LoginStartPacket{})
-	conn.registerPacket(&packet.ClientSettingsPacket{})
+	mcConn.registerPacket(&packet.HandshakePacket{})
+	mcConn.registerPacket(&packet.ServerQueryPacket{})
+	mcConn.registerPacket(&packet.PingPacket{})
+	mcConn.registerPacket(&packet.LoginStartPacket{})
+	mcConn.registerPacket(&packet.ClientSettingsPacket{})
 
 	// Client bound packets
-	conn.registerPacket(&packet.PongPacket{})
-	conn.registerPacket(&packet.LoginSuccessPacket{})
-	conn.registerPacket(&packet.ChatMessagePacket{})
-	conn.registerPacket(&packet.ServerInfoPacket{})
-	conn.registerPacket(&packet.LoginDisconnectPacket{})
-	conn.registerPacket(&packet.JoinGamePacket{})
-	conn.registerPacket(&packet.PlayerPositionLookPacket{})
-	conn.registerPacket(&packet.PluginMessagePacket{})
+	mcConn.registerPacket(&packet.PongPacket{})
+	mcConn.registerPacket(&packet.LoginSuccessPacket{})
+	mcConn.registerPacket(&packet.ChatMessagePacket{})
+	mcConn.registerPacket(&packet.ServerInfoPacket{})
+	mcConn.registerPacket(&packet.LoginDisconnectPacket{})
+	mcConn.registerPacket(&packet.JoinGamePacket{})
+	mcConn.registerPacket(&packet.PlayerPositionLookPacket{})
+	mcConn.registerPacket(&packet.PluginMessagePacket{})
 
-	return conn
+	// Apply options
+	for _, opt := range opts {
+		opt(mcConn)
+	}
+
+	return mcConn
 }
 
 // TODO: Make cancel-based contexts work for ReadPacket & WritePacket
@@ -158,18 +178,18 @@ func (c *connection) ReadPacket(ctx context.Context) (packet.Packet, error) {
 	deadline, hasDeadline := ctx.Deadline()
 
 	if hasDeadline && !deadline.IsZero() {
-		_ = c.transport.SetReadDeadline(deadline)
+		_ = c.conn.SetReadDeadline(deadline)
 	} else {
-		_ = c.transport.SetReadDeadline(time.Time{})
+		_ = c.conn.SetReadDeadline(time.Time{})
 	}
 
 	// Read packet length
 	var length enc.VarInt
-	if err = length.Read(c.transport); err != nil {
+	if err = length.Read(c.conn); err != nil {
 		return nil, fmt.Errorf("could not read packet length: %w", err)
 	}
 
-	// TODO: Maybe handle legacy server ping? (https://wiki.vg/Server_List_Ping#1.6)
+	// TODO: Handle legacy server ping (https://wiki.vg/Server_List_Ping#1.6)
 	if length == 0xFE {
 		return nil, ErrLegacyServerPing
 	}
@@ -181,7 +201,7 @@ func (c *connection) ReadPacket(ctx context.Context) (packet.Packet, error) {
 
 	// Read complete packet into memory
 	data := make([]byte, length)
-	if _, err = io.ReadAtLeast(c.transport, data, int(length)); err != nil {
+	if _, err = io.ReadAtLeast(c.conn, data, int(length)); err != nil {
 		return nil, fmt.Errorf("could not read packet from connection: %w", err)
 	}
 
@@ -201,7 +221,7 @@ func (c *connection) ReadPacket(ctx context.Context) (packet.Packet, error) {
 		return nil, err
 	}
 
-	log.Printf("[Recv] %s, %d: %s\n", c.state, pID, pkt.String())
+	c.logger.Debugf("[Recv] %s, %d: %s\n", c.state, pID, pkt.String())
 
 	// Decode packet
 	if err = pkt.Read(reader); err != nil {
@@ -224,9 +244,9 @@ func (c *connection) WritePacket(ctx context.Context, packetToWrite packet.Packe
 	deadline, hasDeadline := ctx.Deadline()
 
 	if hasDeadline && !deadline.IsZero() {
-		_ = c.transport.SetWriteDeadline(deadline)
+		_ = c.conn.SetWriteDeadline(deadline)
 	} else {
-		_ = c.transport.SetWriteDeadline(time.Time{})
+		_ = c.conn.SetWriteDeadline(time.Time{})
 	}
 
 	packetInfo := packetToWrite.Info()
@@ -239,7 +259,7 @@ func (c *connection) WritePacket(ctx context.Context, packetToWrite packet.Packe
 		return ErrDirection
 	}
 
-	log.Printf("[Send] %s, %d: %s\n", c.state, packetInfo.ID, packetToWrite.String())
+	c.logger.Debugf("[Send] %s, %d: %s\n", c.state, packetInfo.ID, packetToWrite.String())
 
 	var buffer bytes.Buffer
 
@@ -259,12 +279,12 @@ func (c *connection) WritePacket(ctx context.Context, packetToWrite packet.Packe
 	length := enc.VarInt(buffer.Len())
 
 	// Write packet length to connection
-	if err := length.Write(c.transport); err != nil {
+	if err := length.Write(c.conn); err != nil {
 		return fmt.Errorf("could not write packet length: %w", err)
 	}
 
 	// Write buffer to connection
-	if _, err := buffer.WriteTo(c.transport); err != nil {
+	if _, err := buffer.WriteTo(c.conn); err != nil {
 		return fmt.Errorf("could not write packet data: %w", err)
 	}
 
@@ -280,7 +300,7 @@ func (c *connection) SetState(state types.ConnectionState) {
 // Close closes the connection. After this has been called,
 // the Connection should not be used anymore.
 func (c *connection) Close() error {
-	return c.transport.Close()
+	return c.conn.Close()
 }
 
 func (c *connection) getReadDirection() types.PacketDirection {
