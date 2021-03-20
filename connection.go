@@ -11,11 +11,14 @@ import (
 	"io"
 	"log"
 	"net"
+	"strconv"
 	"time"
 )
 
 const (
 	DefaultMinecraftPort = "25565"
+	MinecraftSRVService  = "minecraft"
+	MinecraftSRVProtocol = "tcp"
 )
 
 var (
@@ -29,64 +32,86 @@ var (
 type Connection interface {
 	ReadPacket(context.Context) (packet.Packet, error)
 	WritePacket(context.Context, packet.Packet) error
-	RemoteAddress() Address
 	Close() error
 	SetState(state types.ConnectionState)
 }
 
-type Address struct {
-	Host string
-	Port string
-}
-
 type connection struct {
-	remote    Address
 	transport net.Conn
 	state     types.ConnectionState
 	side      types.Side
 	packets   map[packet.PacketInfo]packet.Packet
 }
 
-// Dial connects to the specified address and creates
-// a new Connection for it.
-func Dial(host string, port string, side types.Side) (Connection, error) {
+// Dial connects to the specified address without timeout
+// and creates a new Connection for it. Returns the connection &
+// the address that was connected to.
+//
+// See DialContext for more information.
+func Dial(host string, port string, side types.Side) (Connection, string, error) {
 	return DialContext(context.Background(), host, port, side)
 }
 
-// Dial creates a TCP connection with specified host & port
-// and creates a new Connection for it. If the specified
-// port is an empty string, the Minecraft default of 25565 will be used.
+// DialContext creates a TCP connection with specified host & port
+// and creates a new Connection for it. If the specified port is
+// an empty string, the Minecraft default of 25565 will be used.
+//
+// Just like the vanilla Minecraft client, DialContext will do an SRV
+// DNS lookup before connecting to a Minecraft server with the default port.
+// If an SRV record is found, the contained target and port will be used
+// to connect instead.
 //
 // The provided Context must be non-nil. If the context expires before
 // the connection is complete, an error is returned. Once successfully
 // connected, any expiration of this context will not affect the connection.
-func DialContext(ctx context.Context, host string, port string, side types.Side) (Connection, error) {
+//
+// Will return the created Connection and the resolved address that
+// was connected to.
+func DialContext(ctx context.Context, host string, port string, side types.Side) (Connection, string, error) {
+	var resolver net.Resolver
+	var dialer net.Dialer
+
+	// If no port is given, use the default Minecraft port.
 	if port == "" {
 		port = DefaultMinecraftPort
 	}
 
-	// Make TCP connection
-	var d net.Dialer
-	tcpConn, err := d.DialContext(ctx, "tcp", net.JoinHostPort(host, port))
+	// If no port is given or the given port is the default,
+	// do a DNS SRV record lookup.
+	if port == DefaultMinecraftPort {
+		// Do DNS SRV record lookup on given hostname
+		_, srvRecords, err := resolver.LookupSRV(ctx, MinecraftSRVService, MinecraftSRVProtocol, host)
 
-	if err != nil {
-		return nil, err
+		if err == nil && len(srvRecords) > 0 {
+			// Override host & port with details from first SRV record returned
+			record := srvRecords[0]
+			host = record.Target
+			port = strconv.Itoa(int(record.Port))
+		}
 	}
 
-	return wrapConnection(tcpConn, Address{host, port}, side), nil
+	// Join host & port for connecting to the server but also for returning
+	// the resolved server address.
+	// Note: If the host was resolved via an SRV record, it will have a
+	// trailing period. This is kept so the returned address can be used for
+	// a handshake packet, which the vanilla client also sends with a trailing period.
+	resolvedAddress := net.JoinHostPort(host, port)
+
+	// Make TCP connection
+	tcpConn, err := dialer.DialContext(ctx, "tcp", resolvedAddress)
+
+	if err != nil {
+		return nil, resolvedAddress, err
+	}
+
+	// Wrap TCP connection in a wrapper for sending/receiving Minecraft packets
+	return WrapConnection(tcpConn, side), resolvedAddress, nil
 }
 
 // WrapConnection wraps the given connection with a Connection,
 // so it can be used for sending/receiving Minecraft packets.
 func WrapConnection(transport net.Conn, side types.Side) Connection {
-	// Ignoring error, conn remote address should always be valid
-	host, port, _ := net.SplitHostPort(transport.RemoteAddr().String())
-	return wrapConnection(transport, Address{host, port}, side)
-}
-
-func wrapConnection(transport net.Conn, addr Address, side types.Side) Connection {
 	conn := &connection{
-		remote:    addr,
 		transport: transport,
 		state:     types.ConnectionStateHandshake,
 		side:      side,
@@ -250,13 +275,6 @@ func (c *connection) WritePacket(ctx context.Context, packetToWrite packet.Packe
 // which changes the meaning of packet IDs.
 func (c *connection) SetState(state types.ConnectionState) {
 	c.state = state
-}
-
-// RemoteAddress returns the remote address of the connected
-// party. Can for instance be used to get the
-// resolved hostname & port of a minecraft server.
-func (c *connection) RemoteAddress() Address {
-	return c.remote
 }
 
 // Close closes the connection. After this has been called,

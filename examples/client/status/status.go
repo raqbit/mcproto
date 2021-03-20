@@ -10,6 +10,7 @@ import (
 	"github.com/Raqbit/mcproto/packet"
 	"github.com/Raqbit/mcproto/types"
 	"log"
+	"net"
 	"os"
 	"strconv"
 )
@@ -33,14 +34,19 @@ func main() {
 
 	ctx := context.Background()
 
-	conn, err := mcproto.Dial(*ServerHost, *ServerPort, types.ClientSide)
+	conn, addr, err := mcproto.Dial(*ServerHost, *ServerPort, types.ClientSide)
 
 	if err != nil {
 		log.Fatalf("mcproto dial error: %s", err)
 	}
 
-	addr := conn.RemoteAddress()
-	port, err := strconv.Atoi(addr.Port)
+	host, portStr, err := net.SplitHostPort(addr)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	port, err := strconv.Atoi(portStr)
 
 	if err != nil {
 		log.Fatal(err)
@@ -49,7 +55,7 @@ func main() {
 	err = conn.WritePacket(ctx,
 		&packet.HandshakePacket{
 			ProtoVer:   ProtocolVersion,
-			ServerAddr: enc.String(addr.Host),
+			ServerAddr: enc.String(host),
 			ServerPort: enc.UnsignedShort(port),
 			NextState:  types.ConnectionStateStatus,
 		})
