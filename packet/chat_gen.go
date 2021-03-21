@@ -12,6 +12,9 @@ func (c *ChatMessagePacket) Write(w io.Writer) error {
 	if err = c.Position.Write(w); err != nil {
 		return err
 	}
+	if err = c.Sender.Write(w); err != nil {
+		return err
+	}
 	return nil
 }
 func (c *ChatMessagePacket) Read(r io.Reader) error {
@@ -20,6 +23,9 @@ func (c *ChatMessagePacket) Read(r io.Reader) error {
 		return err
 	}
 	if err = c.Position.Read(r); err != nil {
+		return err
+	}
+	if err = c.Sender.Read(r); err != nil {
 		return err
 	}
 	return nil

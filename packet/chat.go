@@ -13,6 +13,7 @@ const ChatMessagePacketID = 0x0f
 type ChatMessagePacket struct {
 	Message  types.TextComponent
 	Position enc.Byte
+	Sender   enc.UUID
 }
 
 func (c *ChatMessagePacket) Info() PacketInfo {

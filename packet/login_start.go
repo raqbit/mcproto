@@ -11,7 +11,7 @@ const LoginStartPacketID int32 = 0x00
 
 // https://wiki.vg/Protocol#Login_Start
 type LoginStartPacket struct {
-	Name enc.String
+	Name enc.String `pkt:"strLen(16)"`
 }
 
 func (*LoginStartPacket) Info() PacketInfo {

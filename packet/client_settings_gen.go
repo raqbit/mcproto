@@ -6,7 +6,7 @@ import "io"
 
 func (c *ClientSettingsPacket) Write(w io.Writer) error {
 	var err error
-	if err = c.Lang.Write(w); err != nil {
+	if err = c.Locale.Write(w); err != nil {
 		return err
 	}
 	if err = c.ViewDistance.Write(w); err != nil {
@@ -28,7 +28,7 @@ func (c *ClientSettingsPacket) Write(w io.Writer) error {
 }
 func (c *ClientSettingsPacket) Read(r io.Reader) error {
 	var err error
-	if err = c.Lang.Read(r); err != nil {
+	if err = c.Locale.Read(r); err != nil {
 		return err
 	}
 	if err = c.ViewDistance.Read(r); err != nil {
