@@ -12,7 +12,7 @@ const LoginSuccessPacketID = 0x02
 // https://wiki.vg/Protocol#Login_Success
 type LoginSuccessPacket struct {
 	UUID     enc.UUID
-	Username enc.String
+	Username enc.String `pkt:"strLen(16)"`
 }
 
 func (*LoginSuccessPacket) Info() PacketInfo {

@@ -20,6 +20,7 @@ const (
 	WriterName    = "w"
 	ReaderName    = "r"
 	Directory     = "."
+	SliceItemName = "v"
 )
 
 var (
@@ -124,14 +125,19 @@ func (g *Generator) generate(typeName string) error {
 		return fmt.Errorf("%s is not a struct type", typeName)
 	}
 
-	name := obj.Name()
-	idName := strings.ToLower(name[:1])
+	receiverName := strings.ToLower(typeName[:1])
+
+	//_, err := parsePacket(struc, typeName)
+
+	//if err != nil {
+	//	return fmt.Errorf("could not parse packet struct %s: %w", typeName, err)
+	//}
 
 	g.file.
 		Func().
 		Params(
-			jen.Id(idName).
-				Id("*" + obj.Name()),
+			jen.Id(receiverName).
+				Id("*" + typeName),
 		).
 		Id(FuncMarshal).
 		Params(jen.Id(WriterName).Qual("io", "Writer")).
@@ -143,18 +149,13 @@ func (g *Generator) generate(typeName string) error {
 
 			for i := 0; i < struc.NumFields(); i++ {
 				field := struc.Field(i)
+				_, isSlice := field.Type().(*types.Slice)
 
-				group.If(
-					jen.Err().
-						Op("=").
-						Id(idName).
-						Dot(field.Name()).
-						Dot("Write").
-						Call(
-							jen.Id(WriterName),
-						),
-					jen.Err().Op("!=").Nil(),
-				).Block(jen.Return().Err())
+				if isSlice {
+					genSliceFieldWrite(group, receiverName, field)
+				} else {
+					genFieldWrite(group, receiverName, field)
+				}
 			}
 
 			group.Return().Nil()
@@ -163,7 +164,7 @@ func (g *Generator) generate(typeName string) error {
 	g.file.
 		Func().
 		Params(
-			jen.Id(idName).
+			jen.Id(receiverName).
 				Id("*" + obj.Name()),
 		).
 		Id(FuncUnmarshal).
@@ -177,17 +178,7 @@ func (g *Generator) generate(typeName string) error {
 			for i := 0; i < struc.NumFields(); i++ {
 				field := struc.Field(i)
 
-				group.If(
-					jen.Err().
-						Op("=").
-						Id(idName).
-						Dot(field.Name()).
-						Dot("Read").
-						Call(
-							jen.Id(ReaderName),
-						),
-					jen.Err().Op("!=").Nil(),
-				).Block(jen.Return().Err())
+				genFieldRead(group, receiverName, field)
 			}
 
 			group.Return().Nil()
@@ -196,6 +187,46 @@ func (g *Generator) generate(typeName string) error {
 	return nil
 }
 
-func unqualified(*types.Package) string {
-	return ""
+func genSliceFieldWrite(group *jen.Group, receiverName string, field *types.Var) {
+	group.For(jen.List(jen.Id("_"), jen.Id(SliceItemName)).
+		Op(":=").
+		Range().
+		Id(receiverName).
+		Dot(field.Name()).
+		BlockFunc(func(group *jen.Group) {
+			group.If(jen.Err().Op("=").Id(SliceItemName).Dot("Write").
+				Call(
+					jen.Id(WriterName),
+				),
+				jen.Err().Op("!=").Nil(),
+			).Block(jen.Return().Err())
+		}))
+}
+
+func genFieldWrite(group *jen.Group, receiverName string, field *types.Var) {
+	group.If(
+		jen.Err().
+			Op("=").
+			Id(receiverName).
+			Dot(field.Name()).
+			Dot("Write").
+			Call(
+				jen.Id(WriterName),
+			),
+		jen.Err().Op("!=").Nil(),
+	).Block(jen.Return().Err())
+}
+
+func genFieldRead(group *jen.Group, receiverName string, field *types.Var) {
+	group.If(
+		jen.Err().
+			Op("=").
+			Id(receiverName).
+			Dot(field.Name()).
+			Dot("Read").
+			Call(
+				jen.Id(ReaderName),
+			),
+		jen.Err().Op("!=").Nil(),
+	).Block(jen.Return().Err())
 }

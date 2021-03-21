@@ -10,7 +10,7 @@ import (
 const ClientSettingsPacketID int32 = 0x05
 
 type ClientSettingsPacket struct {
-	Lang               enc.String
+	Locale             enc.String `pkt:"strLen(16)"`
 	ViewDistance       enc.Byte
 	ChatVisibility     enc.VarInt
 	EnableChatColors   enc.Bool

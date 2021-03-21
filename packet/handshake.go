@@ -12,7 +12,7 @@ const HandshakePacketID int32 = 0x00
 // https://wiki.vg/Protocol#Handshake
 type HandshakePacket struct {
 	ProtoVer   enc.VarInt
-	ServerAddr enc.String
+	ServerAddr enc.String `pkt:"strLen(255)"`
 	ServerPort enc.UnsignedShort
 	NextState  types.ConnectionState
 }
