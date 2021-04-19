@@ -9,13 +9,14 @@ import (
 
 const PingPacketID = 0x01
 
-// https://wiki.vg/Protocol#Ping
+// PingPacket is sent by the client to get a PongPacket response.
+// https://wiki.vg/Protocol?oldid=16067#Ping
 type PingPacket struct {
 	Payload enc.Long
 }
 
-func (*PingPacket) Info() PacketInfo {
-	return PacketInfo{
+func (*PingPacket) Info() Info {
+	return Info{
 		ID:              PingPacketID,
 		Direction:       types.ServerBound,
 		ConnectionState: types.ConnectionStateStatus,

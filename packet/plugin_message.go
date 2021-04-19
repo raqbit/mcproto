@@ -8,17 +8,20 @@ import (
 
 const PluginMessagePacketID int32 = 0x19
 
+// PluginMessagePacket is sent by the client
+// as part of a plugin's message channel
+// https://wiki.vg/Protocol?oldid=16067#Plugin_Message_.28clientbound.29
 type PluginMessagePacket struct {
 	Channel types.Identifier
-	Data    PacketData
+	Data    Encoding
 }
 
 func (*PluginMessagePacket) String() string {
 	return "PluginMessage"
 }
 
-func (*PluginMessagePacket) Info() PacketInfo {
-	return PacketInfo{
+func (*PluginMessagePacket) Info() Info {
+	return Info{
 		ID:              PluginMessagePacketID,
 		Direction:       types.ClientBound,
 		ConnectionState: types.ConnectionStatePlay,

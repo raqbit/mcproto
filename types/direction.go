@@ -2,7 +2,7 @@ package types
 
 //go:generate stringer -type=PacketDirection -output direction_string.go -linecomment
 
-// The direction of a packet
+// PacketDirection is the direction of a packet
 type PacketDirection byte
 
 const (

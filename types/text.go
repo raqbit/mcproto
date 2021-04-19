@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-// Minecraft text component
+// TextComponent is the JSON format used for most text data in Minecraft
 // See: https://wiki.vg/Chat#Current_system_.28JSON_Chat.29
 type TextComponent struct {
 	Text          string          `json:"text"`                    // Text content

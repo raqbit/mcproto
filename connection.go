@@ -39,7 +39,7 @@ type connection struct {
 	conn    net.Conn
 	state   types.ConnectionState
 	side    types.Side
-	packets map[packet.PacketInfo]packet.Packet
+	packets map[packet.Info]packet.Packet
 	logger  Logger
 }
 
@@ -129,7 +129,7 @@ func Wrap(conn net.Conn, opts ...Option) Connection {
 		conn:    conn,
 		state:   types.ConnectionStateHandshake,
 		side:    types.ServerSide,
-		packets: make(map[packet.PacketInfo]packet.Packet),
+		packets: make(map[packet.Info]packet.Packet),
 		logger:  noopLogger{},
 	}
 
@@ -324,7 +324,7 @@ func (c *connection) registerPacket(packet packet.Packet) {
 }
 
 func (c *connection) getPacketTypeByID(id int32) (packet.Packet, error) {
-	p, ok := c.packets[packet.PacketInfo{
+	p, ok := c.packets[packet.Info{
 		ID:              id,
 		Direction:       c.getReadDirection(),
 		ConnectionState: c.state,

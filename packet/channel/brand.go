@@ -9,6 +9,7 @@ import (
 
 var BrandChannelID = types.NewIdentifier("minecraft", "brand")
 
+// BrandChannel informs the client of the server brand
 type BrandChannel struct {
 	Brand enc.String
 }

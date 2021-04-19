@@ -9,14 +9,16 @@ import (
 
 const LoginSuccessPacketID = 0x02
 
-// https://wiki.vg/Protocol#Login_Success
+// LoginSuccessPacket is sent by the server
+// when the login was successful
+// https://wiki.vg/Protocol?oldid=16067#Login_Success
 type LoginSuccessPacket struct {
 	UUID     enc.UUID
 	Username enc.String
 }
 
-func (*LoginSuccessPacket) Info() PacketInfo {
-	return PacketInfo{
+func (*LoginSuccessPacket) Info() Info {
+	return Info{
 		ID:              LoginSuccessPacketID,
 		Direction:       types.ClientBound,
 		ConnectionState: types.ConnectionStateLogin,

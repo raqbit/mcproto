@@ -9,14 +9,15 @@ import (
 
 const ChatMessagePacketID = 0x0f
 
-// https://wiki.vg/Protocol#Chat_Message_.28clientbound.29
+// ChatMessagePacket is sent by the server for incoming chat messages
+// https://wiki.vg/Protocol?oldid=16067#Chat_Message_.28clientbound.29
 type ChatMessagePacket struct {
 	Message  types.TextComponent
 	Position enc.Byte
 }
 
-func (c *ChatMessagePacket) Info() PacketInfo {
-	return PacketInfo{
+func (c *ChatMessagePacket) Info() Info {
+	return Info{
 		ID:              ChatMessagePacketID,
 		Direction:       types.ClientBound,
 		ConnectionState: types.ConnectionStatePlay,

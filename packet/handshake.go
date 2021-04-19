@@ -9,7 +9,9 @@ import (
 
 const HandshakePacketID int32 = 0x00
 
-// https://wiki.vg/Protocol#Handshake
+// HandshakePacket is sent by the client to initiate
+// a handshake by changing the connection state
+// https://wiki.vg/Protocol?oldid=16067#Handshake
 type HandshakePacket struct {
 	ProtoVer   enc.VarInt
 	ServerAddr enc.String
@@ -17,8 +19,8 @@ type HandshakePacket struct {
 	NextState  types.ConnectionState
 }
 
-func (h *HandshakePacket) Info() PacketInfo {
-	return PacketInfo{
+func (h *HandshakePacket) Info() Info {
+	return Info{
 		ID:              HandshakePacketID,
 		Direction:       types.ServerBound,
 		ConnectionState: types.ConnectionStateHandshake,

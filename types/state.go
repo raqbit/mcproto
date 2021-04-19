@@ -7,7 +7,7 @@ import (
 
 //go:generate stringer -type=ConnectionState -output state_string.go -linecomment
 
-// The state of a connection
+// ConnectionState is the state of a Minecraft connection
 type ConnectionState int32
 
 const (

@@ -163,17 +163,17 @@ func handlePingPacket(conn mcproto.Connection, v *packet.PingPacket) error {
 }
 
 func handleRequestPacket(conn mcproto.Connection, _ *packet.ServerQueryPacket) error {
-	status := packet.ServerInfo{
-		Version: packet.Version{
+	status := types.ServerInfo{
+		Version: types.ServerInfoVersion{
 			Name:     "mcproto-custom",
 			Protocol: ProtocolVersion,
 		},
-		Players: packet.Players{
+		Players: types.ServerInfoPlayers{
 			Max:    9001,
 			Online: 69,
-			Sample: []packet.Player{},
+			Sample: []types.ServerInfoPlayer{},
 		},
-		Description: packet.ServerDescription{
+		Description: types.ServerDescription{
 			Text:  "mcproto example server",
 			Color: "red",
 		},
