@@ -9,6 +9,9 @@ import (
 
 const PlayerPositionLookPacketID int32 = 0x36
 
+// PlayerPositionLookPacket is sent by the server to inform the client
+// of its location
+// https://wiki.vg/Protocol?oldid=16067#Player_Position_And_Look_.28clientbound.29
 type PlayerPositionLookPacket struct {
 	X          enc.Double
 	Y          enc.Double
@@ -23,8 +26,8 @@ func (*PlayerPositionLookPacket) String() string {
 	return "PlayerPositionAndLook"
 }
 
-func (*PlayerPositionLookPacket) Info() PacketInfo {
-	return PacketInfo{
+func (*PlayerPositionLookPacket) Info() Info {
+	return Info{
 		ID:              PlayerPositionLookPacketID,
 		Direction:       types.ClientBound,
 		ConnectionState: types.ConnectionStatePlay,

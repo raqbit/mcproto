@@ -14,23 +14,21 @@ var (
 )
 
 type (
-	// A type that can be encoded
+	// Encoding is a type that can be encoded
 	Encoding interface {
 		Write(w io.Writer) error
 		Read(r io.Reader) error
 	}
 
-	PacketData Encoding
-
-	// A packet type
+	// Packet is a packet with side-bound ID & direction that can be encoded and sent
 	Packet interface {
 		fmt.Stringer
-		PacketData
-		Info() PacketInfo
+		Encoding
+		Info() Info
 	}
 
-	// The info which identifies a packet
-	PacketInfo struct {
+	// Info is info that identifies a packet
+	Info struct {
 		ID              int32
 		Direction       types.PacketDirection
 		ConnectionState types.ConnectionState

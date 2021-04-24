@@ -8,11 +8,13 @@ import (
 
 const ServerQueryPacketID int32 = 0x00
 
-// https://wiki.vg/Protocol#Request
+// ServerQueryPacket is sent by the client to query the Minecraft server
+// for protocol version, message of the day and online player information.
+// https://wiki.vg/Protocol?oldid=16067#Request
 type ServerQueryPacket struct{}
 
-func (r ServerQueryPacket) Info() PacketInfo {
-	return PacketInfo{
+func (r ServerQueryPacket) Info() Info {
+	return Info{
 		ID:              ServerQueryPacketID,
 		Direction:       types.ServerBound,
 		ConnectionState: types.ConnectionStateStatus,

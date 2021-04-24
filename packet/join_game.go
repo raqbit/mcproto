@@ -9,10 +9,13 @@ import (
 
 const JoinGamePacketID int32 = 0x26
 
+// JoinGamePacket is sent by the server to inform the client
+// of various game & world parameters
+// https://wiki.vg/Protocol?oldid=16067#Join_Game
 type JoinGamePacket struct {
 	PlayerID            enc.Int
-	GameMode            enc.UnsignedByte
-	Dimension           enc.Int
+	GameMode            types.Gamemode
+	Dimension           types.Dimension
 	HashedSeed          enc.Long
 	MaxPlayers          enc.UnsignedByte
 	LevelType           enc.String `len:"16"`
@@ -25,8 +28,8 @@ func (*JoinGamePacket) String() string {
 	return "JoinGame"
 }
 
-func (*JoinGamePacket) Info() PacketInfo {
-	return PacketInfo{
+func (*JoinGamePacket) Info() Info {
+	return Info{
 		ID:              JoinGamePacketID,
 		Direction:       types.ClientBound,
 		ConnectionState: types.ConnectionStatePlay,

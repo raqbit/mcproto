@@ -6,6 +6,8 @@ import (
 )
 
 //go:generate stringer -type=Hand -output hand_string.go -linecomment
+
+// Hand represents the side of a player hand
 type Hand int32
 
 const (

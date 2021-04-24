@@ -9,6 +9,7 @@ import (
 
 const delimiter = ":"
 
+// Identifier is a Minecraft resource identifier
 type Identifier struct {
 	Namespace string
 	Path      string
@@ -42,6 +43,6 @@ func NewIdentifier(namespace string, path string) Identifier {
 	return Identifier{Namespace: namespace, Path: path}
 }
 
-func (r Identifier) String() string {
-	return fmt.Sprintf("%s%s%s", r.Namespace, delimiter, r.Path)
+func (i Identifier) String() string {
+	return fmt.Sprintf("%s%s%s", i.Namespace, delimiter, i.Path)
 }

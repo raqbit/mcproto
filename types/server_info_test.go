@@ -1,4 +1,4 @@
-package packet
+package types
 
 import (
 	"encoding/json"
@@ -14,14 +14,14 @@ const (
 )
 
 var normalServerInfo = ServerInfo{
-	Version: Version{
+	Version: ServerInfoVersion{
 		Name:     "1.13.2",
 		Protocol: 404,
 	},
-	Players: Players{
+	Players: ServerInfoPlayers{
 		Max:    100,
 		Online: 5,
-		Sample: []Player{
+		Sample: []ServerInfoPlayer{
 			{
 				Name: "Raqbit",
 				ID:   "09bc745b-3679-4152-b96b-3f9c59c42059",
@@ -50,11 +50,11 @@ func TestParseServerInfo(t *testing.T) {
 		{
 			name: "negative_protocol_version",
 			expected: ServerInfo{
-				Version: Version{
+				Version: ServerInfoVersion{
 					Name:     "Paper 1.16.5",
 					Protocol: -1,
 				},
-				Players: Players{
+				Players: ServerInfoPlayers{
 					Max:    8,
 					Online: 0,
 				},
