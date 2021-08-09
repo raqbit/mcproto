@@ -10,7 +10,6 @@ import (
 	"github.com/Raqbit/mcproto/types"
 	"io"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -50,13 +49,13 @@ type connection struct {
 // the address that was connected to.
 //
 // See DialContext for more information.
-func Dial(host string, port string, opts ...Option) (Connection, string, error) {
-	return DialContext(context.Background(), host, port, opts...)
+func Dial(address string, opts ...Option) (Connection, string, error) {
+	return DialContext(context.Background(), address, opts...)
 }
 
-// DialContext creates a TCP connection with specified host & port
-// and creates a new Connection for it. If the specified port is
-// an empty string, the Minecraft default of 25565 will be used.
+// DialContext creates a TCP connection with specified address
+// and creates a new Connection for it. If no port is specified,
+// the Minecraft default of 25565 will be used.
 //
 // Just like the vanilla Minecraft client, DialContext will do an SRV
 // DNS lookup before connecting to a Minecraft server with the default port.
@@ -71,35 +70,12 @@ func Dial(host string, port string, opts ...Option) (Connection, string, error) 
 //
 // Will return the created Connection and the resolved address that
 // was connected to.
-func DialContext(ctx context.Context, host string, port string, opts ...Option) (Connection, string, error) {
-	var resolver net.Resolver
+func DialContext(ctx context.Context, address string, opts ...Option) (Connection, string, error) {
 	var dialer net.Dialer
 
-	// If no port is given, use the default Minecraft port.
-	if port == "" {
-		port = DefaultMinecraftPort
-	}
-
-	// If no port is given or the given port is the default,
-	// do a DNS SRV record lookup.
-	if port == DefaultMinecraftPort {
-		// Do DNS SRV record lookup on given hostname
-		_, srvRecords, err := resolver.LookupSRV(ctx, MinecraftSRVService, MinecraftSRVProtocol, host)
-
-		if err == nil && len(srvRecords) > 0 {
-			// Override host & port with details from first SRV record returned
-			record := srvRecords[0]
-			host = record.Target
-			port = strconv.Itoa(int(record.Port))
-		}
-	}
-
-	// Join host & port for connecting to the server but also for returning
-	// the resolved server address.
-	// Note: If the host was resolved via an SRV record, it will have a
-	// trailing period. This is kept so the returned address can be used for
-	// a handshake packet, which the vanilla client also sends with a trailing period.
-	resolvedAddress := net.JoinHostPort(host, port)
+	// TODO: separate add timeout to SRV lookup
+	// Resolve server address from host & port, by checking SRV record & joining host & port
+	resolvedAddress := ResolveServerAddress(ctx, address)
 
 	// Make TCP connection
 	tcpConn, err := dialer.DialContext(ctx, "tcp", resolvedAddress)

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/Raqbit/mcproto"
 	enc "github.com/Raqbit/mcproto/encoding"
@@ -19,22 +18,16 @@ const (
 	ProtocolVersion = 578
 )
 
-var (
-	ServerHost = flag.String("host", "", "server host")
-	ServerPort = flag.String("port", "", "server port")
-)
-
 func main() {
-	flag.Parse()
 
-	if *ServerHost == "" {
-		flag.Usage()
+	if len(os.Args) != 2 {
+		fmt.Println("Please specify the address to get the status of")
 		os.Exit(2)
 	}
 
 	ctx := context.Background()
 
-	conn, addr, err := mcproto.Dial(*ServerHost, *ServerPort)
+	conn, addr, err := mcproto.DialContext(ctx, os.Args[1])
 
 	if err != nil {
 		log.Fatalf("mcproto dial error: %s", err)
