@@ -36,11 +36,13 @@ type Connection interface {
 }
 
 type connection struct {
-	conn    net.Conn
-	state   types.ConnectionState
-	side    types.Side
-	packets map[packet.Info]packet.Packet
-	logger  Logger
+	conn     net.Conn
+	state    types.ConnectionState
+	side     types.Side
+	packets  map[packet.Info]packet.Packet
+	writeBuf *bytes.Buffer
+	readBuf  *bytes.Buffer
+	logger   Logger
 }
 
 // Dial connects to the specified address without timeout
@@ -126,11 +128,13 @@ func DialContext(ctx context.Context, host string, port string, opts ...Option) 
 // The given options will be applied to the created connection.
 func Wrap(conn net.Conn, opts ...Option) Connection {
 	mcConn := &connection{
-		conn:    conn,
-		state:   types.ConnectionStateHandshake,
-		side:    types.ServerSide,
-		packets: make(map[packet.Info]packet.Packet),
-		logger:  noopLogger{},
+		conn:     conn,
+		state:    types.ConnectionStateHandshake,
+		side:     types.ServerSide,
+		packets:  make(map[packet.Info]packet.Packet),
+		readBuf:  new(bytes.Buffer),
+		writeBuf: new(bytes.Buffer),
+		logger:   noopLogger{},
 	}
 
 	// Server bound packets
@@ -175,9 +179,7 @@ func (c *connection) ReadPacket(ctx context.Context) (packet.Packet, error) {
 		panic("nil context")
 	}
 
-	deadline, hasDeadline := ctx.Deadline()
-
-	if hasDeadline && !deadline.IsZero() {
+	if deadline, ok := ctx.Deadline(); ok && !deadline.IsZero() {
 		_ = c.conn.SetReadDeadline(deadline)
 	} else {
 		_ = c.conn.SetReadDeadline(time.Time{})
@@ -199,18 +201,14 @@ func (c *connection) ReadPacket(ctx context.Context) (packet.Packet, error) {
 		return nil, packet.ErrInvalidPacketLength
 	}
 
-	// Read complete packet into memory
-	data := make([]byte, length)
-	if _, err = io.ReadAtLeast(c.conn, data, int(length)); err != nil {
+	// Read complete packet into read buffer
+	if _, err = c.readBuf.ReadFrom(io.LimitReader(c.conn, int64(length))); err != nil {
 		return nil, fmt.Errorf("could not read packet from connection: %w", err)
 	}
 
-	// Reader for data buffer
-	reader := bytes.NewReader(data)
-
 	// Read packet ID
 	var pID enc.VarInt
-	if err = pID.Read(reader); err != nil {
+	if err = pID.Read(c.readBuf); err != nil {
 		return nil, fmt.Errorf("could not decode packet ID: %w", err)
 	}
 
@@ -224,9 +222,12 @@ func (c *connection) ReadPacket(ctx context.Context) (packet.Packet, error) {
 	c.logger.Debugf("[Recv] %s, %d: %s\n", c.state, pID, pkt.String())
 
 	// Decode packet
-	if err = pkt.Read(reader); err != nil {
+	if err = pkt.Read(c.readBuf); err != nil {
 		return nil, fmt.Errorf("could not decode packet data: %w", err)
 	}
+
+	// Reset read buffer
+	c.readBuf.Reset()
 
 	return pkt, nil
 }
@@ -241,9 +242,7 @@ func (c *connection) WritePacket(ctx context.Context, packetToWrite packet.Packe
 		panic("nil context")
 	}
 
-	deadline, hasDeadline := ctx.Deadline()
-
-	if hasDeadline && !deadline.IsZero() {
+	if deadline, ok := ctx.Deadline(); ok && !deadline.IsZero() {
 		_ = c.conn.SetWriteDeadline(deadline)
 	} else {
 		_ = c.conn.SetWriteDeadline(time.Time{})
@@ -261,32 +260,33 @@ func (c *connection) WritePacket(ctx context.Context, packetToWrite packet.Packe
 
 	c.logger.Debugf("[Send] %s, %d: %s\n", c.state, packetInfo.ID, packetToWrite.String())
 
-	var buffer bytes.Buffer
-
 	packetId := enc.VarInt(packetInfo.ID)
 
 	// Write packet ID to buffer
-	if err := packetId.Write(&buffer); err != nil {
+	if err := packetId.Write(c.writeBuf); err != nil {
 		return fmt.Errorf("unable to write packet id to buffer: %w", err)
 	}
 
 	// Write packet data to buffer
-	if err := packetToWrite.Write(&buffer); err != nil {
+	if err := packetToWrite.Write(c.writeBuf); err != nil {
 		return fmt.Errorf("could not encode packet data: %w", err)
 	}
 
 	// Get packet length
-	length := enc.VarInt(buffer.Len())
+	length := enc.VarInt(c.writeBuf.Len())
 
 	// Write packet length to connection
 	if err := length.Write(c.conn); err != nil {
 		return fmt.Errorf("could not write packet length: %w", err)
 	}
 
-	// Write buffer to connection
-	if _, err := buffer.WriteTo(c.conn); err != nil {
-		return fmt.Errorf("could not write packet data: %w", err)
+	// Flush write buffer to connection
+	if _, err := c.writeBuf.WriteTo(c.conn); err != nil {
+		return fmt.Errorf("could not flush write buffer: %w", err)
 	}
+
+	// Reset write buffer
+	c.writeBuf.Reset()
 
 	return nil
 }
