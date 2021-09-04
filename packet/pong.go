@@ -2,7 +2,7 @@ package packet
 
 import (
 	enc "github.com/Raqbit/mcproto/encoding"
-	"github.com/Raqbit/mcproto/types"
+	"github.com/Raqbit/mcproto/game"
 )
 
 //go:generate go run ../tools/genpacket/genpacket.go -packet=PongPacket -output=pong_gen.go
@@ -15,12 +15,16 @@ type PongPacket struct {
 	Payload enc.Long
 }
 
-func (*PongPacket) Info() Info {
-	return Info{
-		ID:              PongPacketID,
-		Direction:       types.ClientBound,
-		ConnectionState: types.ConnectionStateStatus,
-	}
+func (p *PongPacket) ID() int32 {
+	return PongPacketID
+}
+
+func (p *PongPacket) Direction() Direction {
+	return ClientBound
+}
+
+func (p *PongPacket) State() game.ConnectionState {
+	return game.StatusState
 }
 
 func (*PongPacket) String() string {

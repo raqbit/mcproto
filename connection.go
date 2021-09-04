@@ -2,21 +2,14 @@ package mcproto
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	enc "github.com/Raqbit/mcproto/encoding"
+	"github.com/Raqbit/mcproto/game"
 	"github.com/Raqbit/mcproto/packet"
-	"github.com/Raqbit/mcproto/types"
 	"io"
 	"net"
 	"time"
-)
-
-const (
-	DefaultMinecraftPort = "25565"
-	MinecraftSRVService  = "minecraft"
-	MinecraftSRVProtocol = "tcp"
 )
 
 var (
@@ -28,138 +21,30 @@ var (
 // Connection represents a connection
 // to a Minecraft server or client.
 type Connection interface {
-	ReadPacket(context.Context) (packet.Packet, error)
-	WritePacket(context.Context, packet.Packet) error
+	ReadPacket() (packet.Packet, error)
+	WritePacket(packet.Packet) error
+	SetReadDeadline(time.Time) error
+	SetWriteDeadline(time.Time) error
 	Close() error
-	SetState(state types.ConnectionState)
+	SetState(state game.ConnectionState)
 }
 
 type connection struct {
 	conn     net.Conn
-	state    types.ConnectionState
-	side     types.Side
+	state    game.ConnectionState
+	side     Side
 	packets  map[packet.Info]packet.Packet
 	writeBuf *bytes.Buffer
 	readBuf  *bytes.Buffer
 	logger   Logger
 }
 
-// Dial connects to the specified address without timeout
-// and creates a new Connection for it. Returns the connection &
-// the address that was connected to.
-//
-// See DialContext for more information.
-func Dial(address string, opts ...Option) (Connection, string, error) {
-	return DialContext(context.Background(), address, opts...)
-}
-
-// DialContext creates a TCP connection with specified address
-// and creates a new Connection for it. If no port is specified,
-// the Minecraft default of 25565 will be used.
-//
-// Just like the vanilla Minecraft client, DialContext will do an SRV
-// DNS lookup before connecting to a Minecraft server with the default port.
-// If an SRV record is found, the contained target and port will be used
-// to connect instead.
-//
-// The provided Context must be non-nil. If the context expires before
-// the connection is complete, an error is returned. Once successfully
-// connected, any expiration of this context will not affect the connection.
-//
-// The given options will be applied to the created connection.
-//
-// Will return the created Connection and the resolved address that
-// was connected to.
-func DialContext(ctx context.Context, address string, opts ...Option) (Connection, string, error) {
-	var dialer net.Dialer
-
-	// TODO: separate add timeout to SRV lookup
-	// Resolve server address from host & port, by checking SRV record & joining host & port
-	resolvedAddress := ResolveServerAddress(ctx, address)
-
-	// Make TCP connection
-	tcpConn, err := dialer.DialContext(ctx, "tcp", resolvedAddress)
-
-	if err != nil {
-		return nil, resolvedAddress, err
-	}
-
-	// Set options
-	opts = append([]Option{
-		WithSide(types.ClientSide),
-	}, opts...)
-
-	// Wrap TCP connection in a wrapper for sending/receiving Minecraft packets
-	return Wrap(tcpConn, opts...), resolvedAddress, nil
-}
-
-// Wrap wraps the given connection with a Connection,
-// so it can be used for sending/receiving Minecraft packets.
-//
-// Wrap defaults its side to ServerSide, which means it will
-// interpret incoming packets as being server-bound.
-// If you are using Wrap for the client side, use
-// the WithSide option to configure this.
-//
-// The given options will be applied to the created connection.
-func Wrap(conn net.Conn, opts ...Option) Connection {
-	mcConn := &connection{
-		conn:     conn,
-		state:    types.ConnectionStateHandshake,
-		side:     types.ServerSide,
-		packets:  make(map[packet.Info]packet.Packet),
-		readBuf:  new(bytes.Buffer),
-		writeBuf: new(bytes.Buffer),
-		logger:   noopLogger{},
-	}
-
-	// Server bound packets
-	mcConn.registerPacket(&packet.HandshakePacket{})
-	mcConn.registerPacket(&packet.ServerQueryPacket{})
-	mcConn.registerPacket(&packet.PingPacket{})
-	mcConn.registerPacket(&packet.LoginStartPacket{})
-	mcConn.registerPacket(&packet.ClientSettingsPacket{})
-
-	// Client bound packets
-	mcConn.registerPacket(&packet.PongPacket{})
-	mcConn.registerPacket(&packet.LoginSuccessPacket{})
-	mcConn.registerPacket(&packet.ChatMessagePacket{})
-	mcConn.registerPacket(&packet.ServerInfoPacket{})
-	mcConn.registerPacket(&packet.LoginDisconnectPacket{})
-	mcConn.registerPacket(&packet.JoinGamePacket{})
-	mcConn.registerPacket(&packet.PlayerPositionLookPacket{})
-	mcConn.registerPacket(&packet.PluginMessagePacket{})
-
-	// Apply options
-	for _, opt := range opts {
-		opt(mcConn)
-	}
-
-	return mcConn
-}
-
-// TODO: Make cancel-based contexts work for ReadPacket & WritePacket
-
 // ReadPacket reads a Minecraft protocol packet from the connection.
 // ReadPacket will also try to parse the contents of this packet and return
 // an error if the given packet ID is unknown or if the known packet format
 // did not decode correctly.
-//
-// The provided Context must be non-nil. If the context expires before
-// a packet was read, an error is returned. Cancelling this context
-// currently does not stop the packet read, only a deadline (or timeout) works.
-func (c *connection) ReadPacket(ctx context.Context) (packet.Packet, error) {
+func (c *connection) ReadPacket() (packet.Packet, error) {
 	var err error
-
-	if ctx == nil {
-		panic("nil context")
-	}
-
-	if deadline, ok := ctx.Deadline(); ok && !deadline.IsZero() {
-		_ = c.conn.SetReadDeadline(deadline)
-	} else {
-		_ = c.conn.SetReadDeadline(time.Time{})
-	}
 
 	// Read packet length
 	var length enc.VarInt
@@ -210,33 +95,21 @@ func (c *connection) ReadPacket(ctx context.Context) (packet.Packet, error) {
 
 // WritePacket writes a Minecraft protocol packet to the connection.
 //
-// The provided Context must be non-nil. If the context expires before
-// a packet was written, an error is returned. Cancelling this context
-// currently does not stop the packet write, only a deadline (or timeout) works.
-func (c *connection) WritePacket(ctx context.Context, packetToWrite packet.Packet) error {
-	if ctx == nil {
-		panic("nil context")
-	}
-
-	if deadline, ok := ctx.Deadline(); ok && !deadline.IsZero() {
-		_ = c.conn.SetWriteDeadline(deadline)
-	} else {
-		_ = c.conn.SetWriteDeadline(time.Time{})
-	}
-
-	packetInfo := packetToWrite.Info()
-
-	if packetInfo.ConnectionState != c.state {
+// If the provided deadline expires before a packet could be written,
+// an error is returned. Providing a zero value for the deadline will
+// make the read not time out.
+func (c *connection) WritePacket(packetToWrite packet.Packet) error {
+	if packetToWrite.State() != c.state {
 		return ErrConnectionState
 	}
 
-	if packetInfo.Direction != c.getWriteDirection() {
+	if packetToWrite.Direction() != c.side.WriteDirection() {
 		return ErrDirection
 	}
 
-	c.logger.Debugf("[Send] %s, %d: %s\n", c.state, packetInfo.ID, packetToWrite.String())
+	c.logger.Debugf("[Send] %s, %d: %s\n", c.state, packetToWrite.ID(), packetToWrite.String())
 
-	packetId := enc.VarInt(packetInfo.ID)
+	packetId := enc.VarInt(packetToWrite.ID())
 
 	// Write packet ID to buffer
 	if err := packetId.Write(c.writeBuf); err != nil {
@@ -267,9 +140,23 @@ func (c *connection) WritePacket(ctx context.Context, packetToWrite packet.Packe
 	return nil
 }
 
+// SetReadDeadline sets the deadline for future ReadPacket calls
+// and any currently-blocked ReadPacket call.
+// A zero value for t means ReadPacket will not time out.
+func (c *connection) SetReadDeadline(t time.Time) error {
+	return c.conn.SetReadDeadline(t)
+}
+
+// SetWriteDeadline sets the deadline for future WritePacket calls
+// and any currently-blocked WritePacket call.
+// A zero value for t means WritePacket will not time out.
+func (c *connection) SetWriteDeadline(t time.Time) error {
+	return c.conn.SetWriteDeadline(t)
+}
+
 // SetState switches the protocol to a different state,
 // which changes the meaning of packet IDs.
-func (c *connection) SetState(state types.ConnectionState) {
+func (c *connection) SetState(state game.ConnectionState) {
 	c.state = state
 }
 
@@ -279,35 +166,37 @@ func (c *connection) Close() error {
 	return c.conn.Close()
 }
 
-func (c *connection) getReadDirection() types.PacketDirection {
-	if c.side == types.ServerSide {
-		return types.ServerBound
-	} else {
-		return types.ClientBound
-	}
+func (c *connection) registerPacket(pkt packet.Packet) {
+	c.packets[packet.Info{
+		ID:              pkt.ID(),
+		ConnectionState: pkt.State(),
+		Direction:       pkt.Direction(),
+	}] = pkt
 }
 
-func (c *connection) getWriteDirection() types.PacketDirection {
-	if c.side == types.ServerSide {
-		return types.ClientBound
-	} else {
-		return types.ServerBound
-	}
+type UnknownPacketError struct {
+	id        int32
+	direction packet.Direction
+	state     game.ConnectionState
 }
 
-func (c *connection) registerPacket(packet packet.Packet) {
-	c.packets[packet.Info()] = packet
+func (u UnknownPacketError) Error() string {
+	return fmt.Sprintf("unknown packet ID, direction: %s, state: %s, ID: %#x", u.direction, u.state, u.id)
 }
 
 func (c *connection) getPacketTypeByID(id int32) (packet.Packet, error) {
 	p, ok := c.packets[packet.Info{
 		ID:              id,
-		Direction:       c.getReadDirection(),
+		Direction:       c.side.ReadDirection(),
 		ConnectionState: c.state,
 	}]
 
 	if !ok {
-		return nil, fmt.Errorf("unknown packet ID, direction: %s, state: %s, ID: %#x", c.getReadDirection(), c.state, id)
+		return nil, UnknownPacketError{
+			id:        id,
+			direction: c.side.WriteDirection(),
+			state:     c.state,
+		}
 	}
 
 	return p, nil

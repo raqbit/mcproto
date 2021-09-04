@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+const (
+	defaultMinecraftPort = "25565"
+	minecraftSRVService  = "minecraft"
+	minecraftSRVProtocol = "tcp"
+)
+
 func ResolveServerAddress(ctx context.Context, address string) string {
 	var resolver net.Resolver
 
@@ -15,14 +21,14 @@ func ResolveServerAddress(ctx context.Context, address string) string {
 
 	// If no port is given, use the default Minecraft port.
 	if port == "" {
-		port = DefaultMinecraftPort
+		port = defaultMinecraftPort
 	}
 
 	// If no port is given or the given port is the default,
 	// do a DNS SRV record lookup.
-	if port == DefaultMinecraftPort {
+	if port == defaultMinecraftPort {
 		// Do DNS SRV record lookup on given hostname
-		_, srvRecords, err := resolver.LookupSRV(ctx, MinecraftSRVService, MinecraftSRVProtocol, host)
+		_, srvRecords, err := resolver.LookupSRV(ctx, minecraftSRVService, minecraftSRVProtocol, host)
 
 		if err == nil && len(srvRecords) > 0 {
 			// Override host & port with details from the first SRV record returned

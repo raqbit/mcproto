@@ -2,7 +2,7 @@ package packet
 
 import (
 	enc "github.com/Raqbit/mcproto/encoding"
-	"github.com/Raqbit/mcproto/types"
+	"github.com/Raqbit/mcproto/game"
 )
 
 //go:generate go run ../tools/genpacket/genpacket.go -packet=JoinGamePacket -output=join_game_gen.go
@@ -14,8 +14,8 @@ const JoinGamePacketID int32 = 0x26
 // https://wiki.vg/Protocol?oldid=16067#Join_Game
 type JoinGamePacket struct {
 	PlayerID            enc.Int
-	GameMode            types.Gamemode
-	Dimension           types.Dimension
+	GameMode            game.Mode
+	Dimension           game.Dimension
 	HashedSeed          enc.Long
 	MaxPlayers          enc.UnsignedByte
 	LevelType           enc.String `len:"16"`
@@ -24,14 +24,18 @@ type JoinGamePacket struct {
 	EnableRespawnScreen enc.Bool
 }
 
-func (*JoinGamePacket) String() string {
-	return "JoinGame"
+func (j *JoinGamePacket) ID() int32 {
+	return JoinGamePacketID
 }
 
-func (*JoinGamePacket) Info() Info {
-	return Info{
-		ID:              JoinGamePacketID,
-		Direction:       types.ClientBound,
-		ConnectionState: types.ConnectionStatePlay,
-	}
+func (j *JoinGamePacket) Direction() Direction {
+	return ClientBound
+}
+
+func (j *JoinGamePacket) State() game.ConnectionState {
+	return game.PlayState
+}
+
+func (*JoinGamePacket) String() string {
+	return "JoinGame"
 }

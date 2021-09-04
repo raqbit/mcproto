@@ -1,4 +1,4 @@
-package types
+package game
 
 import (
 	enc "github.com/Raqbit/mcproto/encoding"

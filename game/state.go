@@ -1,4 +1,4 @@
-package types
+package game
 
 import (
 	enc "github.com/Raqbit/mcproto/encoding"
@@ -11,10 +11,10 @@ import (
 type ConnectionState int32
 
 const (
-	ConnectionStateHandshake ConnectionState = 0x00 // Handshake
-	ConnectionStateStatus    ConnectionState = 0x01 // Status
-	ConnectionStateLogin     ConnectionState = 0x02 // Login
-	ConnectionStatePlay      ConnectionState = 0x03 // Play
+	HandshakeState ConnectionState = 0x00 // Handshake
+	StatusState    ConnectionState = 0x01 // Status
+	LoginState     ConnectionState = 0x02 // Login
+	PlayState      ConnectionState = 0x03 // Play
 )
 
 func (c *ConnectionState) Write(w io.Writer) error {

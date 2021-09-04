@@ -2,7 +2,7 @@ package packet
 
 import (
 	enc "github.com/Raqbit/mcproto/encoding"
-	"github.com/Raqbit/mcproto/types"
+	"github.com/Raqbit/mcproto/game"
 )
 
 //go:generate go run ../tools/genpacket/genpacket.go -packet=ClientSettingsPacket -output=client_settings_gen.go
@@ -18,17 +18,21 @@ type ClientSettingsPacket struct {
 	ChatVisibility     enc.VarInt
 	EnableChatColors   enc.Bool
 	DisplayedSkinParts enc.UnsignedByte
-	MainHand           types.Hand
+	MainHand           game.Hand
+}
+
+func (c *ClientSettingsPacket) ID() int32 {
+	return ClientSettingsPacketID
+}
+
+func (c *ClientSettingsPacket) Direction() Direction {
+	return ServerBound
+}
+
+func (c *ClientSettingsPacket) State() game.ConnectionState {
+	return game.PlayState
 }
 
 func (*ClientSettingsPacket) String() string {
 	return "ClientSettings"
-}
-
-func (*ClientSettingsPacket) Info() Info {
-	return Info{
-		ID:              ClientSettingsPacketID,
-		Direction:       types.ServerBound,
-		ConnectionState: types.ConnectionStatePlay,
-	}
 }
