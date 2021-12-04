@@ -1,14 +1,13 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"github.com/Raqbit/mcproto"
 	enc "github.com/Raqbit/mcproto/encoding"
+	"github.com/Raqbit/mcproto/game"
 	"github.com/Raqbit/mcproto/packet"
 	"github.com/Raqbit/mcproto/packet/channel"
-	"github.com/Raqbit/mcproto/types"
 	"github.com/google/uuid"
 	"io"
 	"log"
@@ -29,7 +28,8 @@ func main() {
 	}
 
 	for {
-		conn, err := listener.Accept()
+		var conn net.Conn
+		conn, err = listener.Accept()
 
 		if err != nil {
 			log.Fatal("tcp server accept error", err)
@@ -41,15 +41,17 @@ func main() {
 }
 
 func handleConnection(tcpConn net.Conn) {
-	conn := mcproto.Wrap(tcpConn, mcproto.WithSide(types.ServerSide))
+	conn := mcproto.Wrap(tcpConn, mcproto.WithSide(mcproto.ServerSide))
 	defer conn.Close()
 
+	log.Printf("Client connected: %s\n", tcpConn.RemoteAddr())
+
 	for {
-		p, err := conn.ReadPacket(context.Background())
+		p, err := conn.ReadPacket()
 
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				log.Println("Client closed the connection")
+				log.Printf("Client closed the connection: %s", tcpConn.RemoteAddr())
 				return
 			}
 
@@ -93,15 +95,15 @@ func handleClientSettingsPacket(_ mcproto.Connection, _ *packet.ClientSettingsPa
 
 func handleLoginPacket(conn mcproto.Connection, v *packet.LoginStartPacket) error {
 	playerUuid, _ := uuid.NewRandom()
-	err := conn.WritePacket(context.Background(), &packet.LoginSuccessPacket{UUID: enc.UUID(playerUuid), Username: v.Name})
+	err := conn.WritePacket(&packet.LoginSuccessPacket{UUID: enc.UUID(playerUuid), Username: v.Name})
 
 	if err != nil {
 		return fmt.Errorf("could not write login success packet: %w", err)
 	}
 
-	conn.SetState(types.ConnectionStatePlay)
+	conn.SetState(game.PlayState)
 
-	err = conn.WritePacket(context.Background(), &packet.JoinGamePacket{
+	err = conn.WritePacket(&packet.JoinGamePacket{
 		PlayerID:            enc.Int(genRandomEid()),
 		GameMode:            1,
 		Dimension:           0,
@@ -117,7 +119,7 @@ func handleLoginPacket(conn mcproto.Connection, v *packet.LoginStartPacket) erro
 		return fmt.Errorf("could not write join game packet: %w", err)
 	}
 
-	err = conn.WritePacket(context.Background(), &packet.PluginMessagePacket{
+	err = conn.WritePacket(&packet.PluginMessagePacket{
 		Channel: channel.BrandChannelID,
 		Data: &channel.BrandChannel{
 			Brand: "mcproto custom",
@@ -128,7 +130,7 @@ func handleLoginPacket(conn mcproto.Connection, v *packet.LoginStartPacket) erro
 		return fmt.Errorf("could not write brand packet: %w", err)
 	}
 
-	err = conn.WritePacket(context.Background(), &packet.PlayerPositionLookPacket{
+	err = conn.WritePacket(&packet.PlayerPositionLookPacket{
 		X:          0,
 		Y:          0,
 		Z:          0,
@@ -143,8 +145,8 @@ func handleLoginPacket(conn mcproto.Connection, v *packet.LoginStartPacket) erro
 	}
 
 	for i := 0; i < 40; i += 1 {
-		err = conn.WritePacket(context.Background(), &packet.ChatMessagePacket{
-			Message: types.TextComponent{
+		err = conn.WritePacket(&packet.ChatMessagePacket{
+			Message: game.TextComponent{
 				Text:  "Sent from mcproto",
 				Color: "red",
 			},
@@ -159,27 +161,27 @@ func handleLoginPacket(conn mcproto.Connection, v *packet.LoginStartPacket) erro
 }
 
 func handlePingPacket(conn mcproto.Connection, v *packet.PingPacket) error {
-	return conn.WritePacket(context.Background(), &packet.PongPacket{Payload: v.Payload})
+	return conn.WritePacket(&packet.PongPacket{Payload: v.Payload})
 }
 
 func handleRequestPacket(conn mcproto.Connection, _ *packet.ServerQueryPacket) error {
-	status := types.ServerInfo{
-		Version: types.ServerInfoVersion{
+	status := game.ServerInfo{
+		Version: game.ServerInfoVersion{
 			Name:     "mcproto-custom",
 			Protocol: ProtocolVersion,
 		},
-		Players: types.ServerInfoPlayers{
+		Players: game.ServerInfoPlayers{
 			Max:    9001,
 			Online: 69,
-			Sample: []types.ServerInfoPlayer{},
+			Sample: []game.ServerInfoPlayer{},
 		},
-		Description: types.ServerDescription{
+		Description: game.ServerDescription{
 			Text:  "mcproto example server",
 			Color: "red",
 		},
 	}
 
-	err := conn.WritePacket(context.Background(), &packet.ServerInfoPacket{
+	err := conn.WritePacket(&packet.ServerInfoPacket{
 		Response: status,
 	})
 
@@ -195,7 +197,7 @@ func handleHandshakePacket(conn mcproto.Connection, p *packet.HandshakePacket) e
 		return fmt.Errorf("unsupported protocol version: %d", p.ProtoVer)
 	}
 
-	if p.NextState != types.ConnectionStateStatus && p.NextState != types.ConnectionStateLogin {
+	if p.NextState != game.StatusState && p.NextState != game.LoginState {
 		return fmt.Errorf("handshake packet with invalid next state")
 	} else {
 		conn.SetState(p.NextState)

@@ -2,7 +2,7 @@ package packet
 
 import (
 	enc "github.com/Raqbit/mcproto/encoding"
-	"github.com/Raqbit/mcproto/types"
+	"github.com/Raqbit/mcproto/game"
 )
 
 //go:generate go run ../tools/genpacket/genpacket.go -packet=LoginStartPacket -output=login_start_gen.go
@@ -15,11 +15,23 @@ type LoginStartPacket struct {
 	Name enc.String
 }
 
+func (l *LoginStartPacket) ID() int32 {
+	return LoginStartPacketID
+}
+
+func (l *LoginStartPacket) Direction() Direction {
+	return ServerBound
+}
+
+func (l *LoginStartPacket) State() game.ConnectionState {
+	return game.LoginState
+}
+
 func (*LoginStartPacket) Info() Info {
 	return Info{
 		ID:              LoginStartPacketID,
-		Direction:       types.ServerBound,
-		ConnectionState: types.ConnectionStateLogin,
+		Direction:       ServerBound,
+		ConnectionState: game.LoginState,
 	}
 }
 

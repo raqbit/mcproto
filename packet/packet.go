@@ -3,7 +3,7 @@ package packet
 import (
 	"errors"
 	"fmt"
-	"github.com/Raqbit/mcproto/types"
+	"github.com/Raqbit/mcproto/game"
 	"io"
 )
 
@@ -24,13 +24,15 @@ type (
 	Packet interface {
 		fmt.Stringer
 		Encoding
-		Info() Info
+		ID() int32
+		Direction() Direction
+		State() game.ConnectionState
 	}
 
-	// Info is info that identifies a packet
+	// Info is the info that uniquely identifies a packet
 	Info struct {
 		ID              int32
-		Direction       types.PacketDirection
-		ConnectionState types.ConnectionState
+		Direction       Direction
+		ConnectionState game.ConnectionState
 	}
 )

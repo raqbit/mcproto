@@ -2,7 +2,7 @@ package packet
 
 import (
 	enc "github.com/Raqbit/mcproto/encoding"
-	"github.com/Raqbit/mcproto/types"
+	"github.com/Raqbit/mcproto/game"
 )
 
 //go:generate go run ../tools/genpacket/genpacket.go -packet=HandshakePacket -output=handshake_gen.go
@@ -16,15 +16,19 @@ type HandshakePacket struct {
 	ProtoVer   enc.VarInt
 	ServerAddr enc.String
 	ServerPort enc.UnsignedShort
-	NextState  types.ConnectionState
+	NextState  game.ConnectionState
 }
 
-func (h *HandshakePacket) Info() Info {
-	return Info{
-		ID:              HandshakePacketID,
-		Direction:       types.ServerBound,
-		ConnectionState: types.ConnectionStateHandshake,
-	}
+func (h *HandshakePacket) ID() int32 {
+	return HandshakePacketID
+}
+
+func (h *HandshakePacket) Direction() Direction {
+	return ServerBound
+}
+
+func (h *HandshakePacket) State() game.ConnectionState {
+	return game.HandshakeState
 }
 
 func (*HandshakePacket) String() string {

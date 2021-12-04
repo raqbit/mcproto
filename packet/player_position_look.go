@@ -2,7 +2,7 @@ package packet
 
 import (
 	enc "github.com/Raqbit/mcproto/encoding"
-	"github.com/Raqbit/mcproto/types"
+	"github.com/Raqbit/mcproto/game"
 )
 
 //go:generate go run ../tools/genpacket/genpacket.go -packet=PlayerPositionLookPacket -output=player_position_look_gen.go
@@ -22,14 +22,18 @@ type PlayerPositionLookPacket struct {
 	TeleportID enc.VarInt
 }
 
-func (*PlayerPositionLookPacket) String() string {
-	return "PlayerPositionAndLook"
+func (p *PlayerPositionLookPacket) ID() int32 {
+	return PlayerPositionLookPacketID
 }
 
-func (*PlayerPositionLookPacket) Info() Info {
-	return Info{
-		ID:              PlayerPositionLookPacketID,
-		Direction:       types.ClientBound,
-		ConnectionState: types.ConnectionStatePlay,
-	}
+func (p *PlayerPositionLookPacket) Direction() Direction {
+	return ClientBound
+}
+
+func (p *PlayerPositionLookPacket) State() game.ConnectionState {
+	return game.PlayState
+}
+
+func (*PlayerPositionLookPacket) String() string {
+	return "PlayerPositionAndLook"
 }

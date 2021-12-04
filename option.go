@@ -1,8 +1,8 @@
 package mcproto
 
 import (
+	"github.com/Raqbit/mcproto/game"
 	"github.com/Raqbit/mcproto/packet"
-	"github.com/Raqbit/mcproto/types"
 )
 
 // Option is a configuration option for mcproto.
@@ -30,8 +30,14 @@ func WithPackets(packets []packet.Packet) Option {
 
 // WithSide configures the connection side
 // of the mcproto Connection.
-func WithSide(side types.Side) Option {
+func WithSide(side Side) Option {
 	return func(conn *connection) {
 		conn.side = side
+	}
+}
+
+func WithState(state game.ConnectionState) Option {
+	return func(conn *connection) {
+		conn.state = state
 	}
 }

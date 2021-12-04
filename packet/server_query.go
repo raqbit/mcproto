@@ -1,8 +1,6 @@
 package packet
 
-import (
-	"github.com/Raqbit/mcproto/types"
-)
+import "github.com/Raqbit/mcproto/game"
 
 //go:generate go run ../tools/genpacket/genpacket.go -packet=ServerQueryPacket -output=server_query_gen.go
 
@@ -13,12 +11,16 @@ const ServerQueryPacketID int32 = 0x00
 // https://wiki.vg/Protocol?oldid=16067#Request
 type ServerQueryPacket struct{}
 
-func (r ServerQueryPacket) Info() Info {
-	return Info{
-		ID:              ServerQueryPacketID,
-		Direction:       types.ServerBound,
-		ConnectionState: types.ConnectionStateStatus,
-	}
+func (s ServerQueryPacket) ID() int32 {
+	return ServerQueryPacketID
+}
+
+func (s ServerQueryPacket) Direction() Direction {
+	return ServerBound
+}
+
+func (s ServerQueryPacket) State() game.ConnectionState {
+	return game.StatusState
 }
 
 func (*ServerQueryPacket) String() string {

@@ -1,4 +1,4 @@
-package types
+package game
 
 import (
 	"encoding/json"
