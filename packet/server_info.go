@@ -4,7 +4,7 @@ import (
 	"github.com/Raqbit/mcproto/game"
 )
 
-//go:generate go run ../tools/genpacket/genpacket.go -packet=ServerInfoPacket -output=server_info_gen.go
+//go:generate go run ../tools/genpacket -packet=ServerInfoPacket -output=server_info_gen.go
 
 const ServerInfoPacketID int32 = 0x00
 

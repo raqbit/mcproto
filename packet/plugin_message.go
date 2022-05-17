@@ -4,7 +4,7 @@ import (
 	"github.com/Raqbit/mcproto/game"
 )
 
-//go:generate go run ../tools/genpacket/genpacket.go -packet=PluginMessagePacket -output=plugin_message_gen.go
+//go:generate go run ../tools/genpacket -packet=PluginMessagePacket -output=plugin_message_gen.go
 
 const PluginMessagePacketID int32 = 0x19
 

@@ -5,7 +5,7 @@ import (
 	"github.com/Raqbit/mcproto/game"
 )
 
-//go:generate go run ../tools/genpacket/genpacket.go -packet=ChatMessagePacket -output=chat_gen.go
+//go:generate go run ../tools/genpacket -packet=ChatMessagePacket -output=chat_gen.go
 
 const ChatMessagePacketID = 0x0f
 

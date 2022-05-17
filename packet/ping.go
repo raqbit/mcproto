@@ -5,7 +5,7 @@ import (
 	"github.com/Raqbit/mcproto/game"
 )
 
-//go:generate go run ../tools/genpacket/genpacket.go -packet=PingPacket -output=ping_gen.go
+//go:generate go run ../tools/genpacket -packet=PingPacket -output=ping_gen.go
 
 const PingPacketID = 0x01
 

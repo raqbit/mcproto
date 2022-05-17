@@ -12,13 +12,13 @@ func _() {
 	_ = x[ServerBound-1]
 }
 
-const _PacketDirection_name = "client-boundserver-bound"
+const _Direction_name = "client-boundserver-bound"
 
-var _PacketDirection_index = [...]uint8{0, 12, 24}
+var _Direction_index = [...]uint8{0, 12, 24}
 
 func (i Direction) String() string {
-	if i >= Direction(len(_PacketDirection_index)-1) {
+	if i >= Direction(len(_Direction_index)-1) {
 		return "Direction(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _PacketDirection_name[_PacketDirection_index[i]:_PacketDirection_index[i+1]]
+	return _Direction_name[_Direction_index[i]:_Direction_index[i+1]]
 }

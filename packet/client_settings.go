@@ -5,7 +5,7 @@ import (
 	"github.com/Raqbit/mcproto/game"
 )
 
-//go:generate go run ../tools/genpacket/genpacket.go -packet=ClientSettingsPacket -output=client_settings_gen.go
+//go:generate go run ../tools/genpacket -packet=ClientSettingsPacket -output=client_settings_gen.go
 
 const ClientSettingsPacketID int32 = 0x05
 
