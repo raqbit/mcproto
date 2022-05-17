@@ -5,7 +5,7 @@ import (
 	"github.com/Raqbit/mcproto/game"
 )
 
-//go:generate go run ../tools/genpacket/genpacket.go -packet=PongPacket -output=pong_gen.go
+//go:generate go run ../tools/genpacket -packet=PongPacket -output=pong_gen.go
 
 const PongPacketID int32 = 0x01
 

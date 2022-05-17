@@ -5,7 +5,7 @@ import (
 	"github.com/Raqbit/mcproto/game"
 )
 
-//go:generate go run ../tools/genpacket/genpacket.go -packet=JoinGamePacket -output=join_game_gen.go
+//go:generate go run ../tools/genpacket -packet=JoinGamePacket -output=join_game_gen.go
 
 const JoinGamePacketID int32 = 0x26
 

@@ -5,7 +5,7 @@ import (
 	"github.com/Raqbit/mcproto/game"
 )
 
-//go:generate go run ../tools/genpacket/genpacket.go -packet=PlayerPositionLookPacket -output=player_position_look_gen.go
+//go:generate go run ../tools/genpacket -packet=PlayerPositionLookPacket -output=player_position_look_gen.go
 
 const PlayerPositionLookPacketID int32 = 0x36
 

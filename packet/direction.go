@@ -1,6 +1,6 @@
 package packet
 
-//go:generate stringer -type=PacketDirection -output direction_string.go -linecomment
+//go:generate stringer -type=Direction -output direction_string.go -linecomment
 
 // Direction is the direction of a packet
 type Direction byte

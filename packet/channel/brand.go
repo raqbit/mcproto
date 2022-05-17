@@ -5,7 +5,7 @@ import (
 	"github.com/Raqbit/mcproto/game"
 )
 
-//go:generate go run ../../tools/genpacket/genpacket.go -packet=BrandChannel -output=brand_gen.go
+//go:generate go run ../../tools/genpacket -packet=BrandChannel -output=brand_gen.go
 
 var BrandChannelID = game.NewIdentifier("minecraft", "brand")
 

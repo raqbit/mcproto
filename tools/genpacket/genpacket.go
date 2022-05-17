@@ -195,7 +195,3 @@ func (g *Generator) generate(typeName string) error {
 
 	return nil
 }
-
-func unqualified(*types.Package) string {
-	return ""
-}

@@ -5,7 +5,7 @@ import (
 	"github.com/Raqbit/mcproto/game"
 )
 
-//go:generate go run ../tools/genpacket/genpacket.go -packet=LoginSuccessPacket -output=login_success_gen.go
+//go:generate go run ../tools/genpacket -packet=LoginSuccessPacket -output=login_success_gen.go
 
 const LoginSuccessPacketID = 0x02
 

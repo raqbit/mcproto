@@ -5,7 +5,7 @@ import (
 	"github.com/Raqbit/mcproto/game"
 )
 
-//go:generate go run ../tools/genpacket/genpacket.go -packet=HandshakePacket -output=handshake_gen.go
+//go:generate go run ../tools/genpacket -packet=HandshakePacket -output=handshake_gen.go
 
 const HandshakePacketID int32 = 0x00
 

@@ -2,7 +2,7 @@ package packet
 
 import "github.com/Raqbit/mcproto/game"
 
-//go:generate go run ../tools/genpacket/genpacket.go -packet=ServerQueryPacket -output=server_query_gen.go
+//go:generate go run ../tools/genpacket -packet=ServerQueryPacket -output=server_query_gen.go
 
 const ServerQueryPacketID int32 = 0x00
 

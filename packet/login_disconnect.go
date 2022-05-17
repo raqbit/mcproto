@@ -4,7 +4,7 @@ import (
 	"github.com/Raqbit/mcproto/game"
 )
 
-//go:generate go run ../tools/genpacket/genpacket.go -packet=LoginDisconnectPacket -output=login_disconnect_gen.go
+//go:generate go run ../tools/genpacket -packet=LoginDisconnectPacket -output=login_disconnect_gen.go
 
 const LoginDisconnectPacketID int32 = 0x00
 
