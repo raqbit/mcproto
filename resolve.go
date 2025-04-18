@@ -13,7 +13,7 @@ const (
 	minecraftSRVProtocol = "tcp"
 )
 
-func ResolveServerAddress(ctx context.Context, address string) string {
+func resolveServerAddress(ctx context.Context, address string) string {
 	var resolver net.Resolver
 
 	// Split host & port, port being optional

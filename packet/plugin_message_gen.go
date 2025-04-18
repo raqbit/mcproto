@@ -14,6 +14,7 @@ func (p *PluginMessagePacket) Write(w io.Writer) error {
 	}
 	return nil
 }
+
 func (p *PluginMessagePacket) Read(r io.Reader) error {
 	var err error
 	if err = p.Channel.Read(r); err != nil {

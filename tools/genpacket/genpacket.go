@@ -160,6 +160,8 @@ func (g *Generator) generate(typeName string) error {
 			group.Return().Nil()
 		})
 
+	g.file.Line()
+
 	g.file.
 		Func().
 		Params(

@@ -2,7 +2,6 @@ package packet
 
 import (
 	enc "github.com/Raqbit/mcproto/encoding"
-	"github.com/Raqbit/mcproto/game"
 )
 
 //go:generate go run ../tools/genpacket -packet=LoginSuccessPacket -output=login_success_gen.go
@@ -19,14 +18,6 @@ type LoginSuccessPacket struct {
 
 func (l *LoginSuccessPacket) ID() int32 {
 	return LoginSuccessPacketID
-}
-
-func (l *LoginSuccessPacket) Direction() Direction {
-	return ClientBound
-}
-
-func (l *LoginSuccessPacket) State() game.ConnectionState {
-	return game.LoginState
 }
 
 func (*LoginSuccessPacket) String() string {

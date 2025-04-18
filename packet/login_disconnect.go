@@ -19,14 +19,6 @@ func (l *LoginDisconnectPacket) ID() int32 {
 	return LoginDisconnectPacketID
 }
 
-func (l *LoginDisconnectPacket) Direction() Direction {
-	return ClientBound
-}
-
-func (l *LoginDisconnectPacket) State() game.ConnectionState {
-	return game.LoginState
-}
-
 func (*LoginDisconnectPacket) String() string {
 	return "LoginDisconnect"
 }

@@ -25,14 +25,6 @@ func (c *ClientSettingsPacket) ID() int32 {
 	return ClientSettingsPacketID
 }
 
-func (c *ClientSettingsPacket) Direction() Direction {
-	return ServerBound
-}
-
-func (c *ClientSettingsPacket) State() game.ConnectionState {
-	return game.PlayState
-}
-
 func (*ClientSettingsPacket) String() string {
 	return "ClientSettings"
 }

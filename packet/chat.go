@@ -20,14 +20,6 @@ func (c *ChatMessagePacket) ID() int32 {
 	return ChatMessagePacketID
 }
 
-func (c *ChatMessagePacket) Direction() Direction {
-	return ClientBound
-}
-
-func (c *ChatMessagePacket) State() game.ConnectionState {
-	return game.PlayState
-}
-
 func (c *ChatMessagePacket) String() string {
 	return "ChatMessage"
 }

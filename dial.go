@@ -3,7 +3,6 @@ package mcproto
 import (
 	"bytes"
 	"context"
-	"github.com/Raqbit/mcproto/game"
 	"github.com/Raqbit/mcproto/packet"
 	"net"
 )
@@ -43,7 +42,7 @@ func DialContext(ctx context.Context, address string, opts ...Option) (Connectio
 
 	// TODO: separate add timeout to SRV lookup
 	// Resolve server address from host & port, by checking SRV record & joining host & port
-	resolvedAddress := ResolveServerAddress(ctx, address)
+	resolvedAddress := resolveServerAddress(ctx, address)
 
 	// Make TCP connection
 	tcpConn, err := dialer.DialContext(ctx, "tcp", resolvedAddress)
@@ -52,10 +51,10 @@ func DialContext(ctx context.Context, address string, opts ...Option) (Connectio
 		return nil, resolvedAddress, err
 	}
 
-	// Set options
+	// Combine default options with given options
 	opts = append([]Option{
 		WithSide(ClientSide),
-		WithState(game.HandshakeState),
+		WithState(HandshakeState),
 	}, opts...)
 
 	// Wrap TCP connection in a wrapper for sending/receiving Minecraft packets
@@ -78,29 +77,29 @@ func Wrap(conn net.Conn, opts ...Option) Connection {
 	mcConn := &connection{
 		conn:     conn,
 		side:     ServerSide,
-		state:    game.HandshakeState,
-		packets:  make(map[packet.Info]packet.Packet),
+		state:    HandshakeState,
+		packets:  make(map[packetKey]Packet),
 		readBuf:  new(bytes.Buffer),
 		writeBuf: new(bytes.Buffer),
 		logger:   noopLogger{},
 	}
 
 	// Server bound packets
-	mcConn.registerPacket(&packet.HandshakePacket{})
-	mcConn.registerPacket(&packet.ServerQueryPacket{})
-	mcConn.registerPacket(&packet.PingPacket{})
-	mcConn.registerPacket(&packet.LoginStartPacket{})
-	mcConn.registerPacket(&packet.ClientSettingsPacket{})
+	mcConn.registerPacket(new(packet.HandshakePacket), serverBound, HandshakeState)
+	mcConn.registerPacket(new(packet.ServerQueryPacket), serverBound, StatusState)
+	mcConn.registerPacket(new(packet.PingPacket), serverBound, StatusState)
+	mcConn.registerPacket(new(packet.LoginStartPacket), serverBound, LoginState)
+	mcConn.registerPacket(new(packet.ClientSettingsPacket), serverBound, PlayState)
 
 	// Client bound packets
-	mcConn.registerPacket(&packet.PongPacket{})
-	mcConn.registerPacket(&packet.LoginSuccessPacket{})
-	mcConn.registerPacket(&packet.ChatMessagePacket{})
-	mcConn.registerPacket(&packet.ServerInfoPacket{})
-	mcConn.registerPacket(&packet.LoginDisconnectPacket{})
-	mcConn.registerPacket(&packet.JoinGamePacket{})
-	mcConn.registerPacket(&packet.PlayerPositionLookPacket{})
-	mcConn.registerPacket(&packet.PluginMessagePacket{})
+	mcConn.registerPacket(new(packet.PongPacket), clientBound, StatusState)
+	mcConn.registerPacket(new(packet.LoginSuccessPacket), clientBound, LoginState)
+	mcConn.registerPacket(new(packet.ChatMessagePacket), clientBound, PlayState)
+	mcConn.registerPacket(new(packet.ServerInfoPacket), clientBound, StatusState)
+	mcConn.registerPacket(new(packet.LoginDisconnectPacket), clientBound, LoginState)
+	mcConn.registerPacket(new(packet.JoinGamePacket), clientBound, PlayState)
+	mcConn.registerPacket(new(packet.PlayerPositionLookPacket), clientBound, PlayState)
+	mcConn.registerPacket(new(packet.PluginMessagePacket), clientBound, PlayState)
 
 	// Apply options
 	for _, opt := range opts {

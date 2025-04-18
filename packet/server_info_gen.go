@@ -11,6 +11,7 @@ func (s *ServerInfoPacket) Write(w io.Writer) error {
 	}
 	return nil
 }
+
 func (s *ServerInfoPacket) Read(r io.Reader) error {
 	var err error
 	if err = s.Response.Read(r); err != nil {

@@ -14,6 +14,7 @@ func (l *LoginSuccessPacket) Write(w io.Writer) error {
 	}
 	return nil
 }
+
 func (l *LoginSuccessPacket) Read(r io.Reader) error {
 	var err error
 	if err = l.UUID.Read(r); err != nil {

@@ -11,6 +11,7 @@ func (p *PingPacket) Write(w io.Writer) error {
 	}
 	return nil
 }
+
 func (p *PingPacket) Read(r io.Reader) error {
 	var err error
 	if err = p.Payload.Read(r); err != nil {

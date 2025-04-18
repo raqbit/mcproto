@@ -1,9 +1,6 @@
-package game
+package mcproto
 
-import (
-	enc "github.com/Raqbit/mcproto/encoding"
-	"io"
-)
+import enc "github.com/Raqbit/mcproto/encoding"
 
 //go:generate stringer -type=ConnectionState -output state_string.go -linecomment
 
@@ -17,18 +14,10 @@ const (
 	PlayState      ConnectionState = 0x03 // Play
 )
 
-func (c *ConnectionState) Write(w io.Writer) error {
-	num := enc.VarInt(*c)
-	return num.Write(w)
+func (s ConnectionState) ID() enc.VarInt {
+	return enc.VarInt(s)
 }
 
-func (c *ConnectionState) Read(r io.Reader) error {
-	var num enc.VarInt
-
-	if err := num.Read(r); err != nil {
-		return err
-	}
-
-	*c = ConnectionState(num)
-	return nil
+func StateFromID(varInt enc.VarInt) ConnectionState {
+	return ConnectionState(varInt)
 }

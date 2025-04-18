@@ -2,7 +2,6 @@ package packet
 
 import (
 	enc "github.com/Raqbit/mcproto/encoding"
-	"github.com/Raqbit/mcproto/game"
 )
 
 //go:generate go run ../tools/genpacket -packet=PlayerPositionLookPacket -output=player_position_look_gen.go
@@ -24,14 +23,6 @@ type PlayerPositionLookPacket struct {
 
 func (p *PlayerPositionLookPacket) ID() int32 {
 	return PlayerPositionLookPacketID
-}
-
-func (p *PlayerPositionLookPacket) Direction() Direction {
-	return ClientBound
-}
-
-func (p *PlayerPositionLookPacket) State() game.ConnectionState {
-	return game.PlayState
 }
 
 func (*PlayerPositionLookPacket) String() string {

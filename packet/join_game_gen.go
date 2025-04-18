@@ -35,6 +35,7 @@ func (j *JoinGamePacket) Write(w io.Writer) error {
 	}
 	return nil
 }
+
 func (j *JoinGamePacket) Read(r io.Reader) error {
 	var err error
 	if err = j.PlayerID.Read(r); err != nil {

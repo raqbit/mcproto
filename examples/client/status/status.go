@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/Raqbit/mcproto"
 	enc "github.com/Raqbit/mcproto/encoding"
-	"github.com/Raqbit/mcproto/game"
 	"github.com/Raqbit/mcproto/packet"
 	"log"
 	"net"
@@ -43,27 +42,27 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = conn.WritePacket(&packet.HandshakePacket{
+	err = conn.Write(&packet.HandshakePacket{
 		ProtoVer:   ProtocolVersion,
 		ServerAddr: enc.String(host),
 		ServerPort: enc.UnsignedShort(port),
-		NextState:  game.StatusState,
+		NextState:  mcproto.StatusState.ID(),
 	})
 
 	// Actually update our connection as well
-	conn.SetState(game.StatusState)
+	conn.SetState(mcproto.StatusState)
 
 	if err != nil {
 		log.Fatalf("could not write handshake packet: %s", err)
 	}
 
-	err = conn.WritePacket(&packet.ServerQueryPacket{})
+	err = conn.Write(&packet.ServerQueryPacket{})
 
 	if err != nil {
 		log.Fatalf("could not write request packet: %s", err)
 	}
 
-	resp, err := conn.ReadPacket()
+	resp, err := conn.Read()
 
 	if err != nil {
 		log.Fatalf("could not read response packet: %s", err)

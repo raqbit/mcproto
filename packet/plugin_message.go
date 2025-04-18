@@ -1,6 +1,7 @@
 package packet
 
 import (
+	"github.com/Raqbit/mcproto/encoding"
 	"github.com/Raqbit/mcproto/game"
 )
 
@@ -8,24 +9,21 @@ import (
 
 const PluginMessagePacketID int32 = 0x19
 
+type pluginMessageData interface {
+	encoding.MinecraftEncodable
+	encoding.MinecraftDecodable
+}
+
 // PluginMessagePacket is sent by the client
 // as part of a plugin's message channel
 // https://wiki.vg/Protocol?oldid=16067#Plugin_Message_.28clientbound.29
 type PluginMessagePacket struct {
 	Channel game.Identifier
-	Data    Encoding
+	Data    pluginMessageData
 }
 
 func (p *PluginMessagePacket) ID() int32 {
 	return PluginMessagePacketID
-}
-
-func (p *PluginMessagePacket) Direction() Direction {
-	return ClientBound
-}
-
-func (p *PluginMessagePacket) State() game.ConnectionState {
-	return game.PlayState
 }
 
 func (*PluginMessagePacket) String() string {

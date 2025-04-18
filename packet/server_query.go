@@ -1,7 +1,5 @@
 package packet
 
-import "github.com/Raqbit/mcproto/game"
-
 //go:generate go run ../tools/genpacket -packet=ServerQueryPacket -output=server_query_gen.go
 
 const ServerQueryPacketID int32 = 0x00
@@ -13,14 +11,6 @@ type ServerQueryPacket struct{}
 
 func (s ServerQueryPacket) ID() int32 {
 	return ServerQueryPacketID
-}
-
-func (s ServerQueryPacket) Direction() Direction {
-	return ServerBound
-}
-
-func (s ServerQueryPacket) State() game.ConnectionState {
-	return game.StatusState
 }
 
 func (*ServerQueryPacket) String() string {

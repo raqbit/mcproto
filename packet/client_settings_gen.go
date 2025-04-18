@@ -26,6 +26,7 @@ func (c *ClientSettingsPacket) Write(w io.Writer) error {
 	}
 	return nil
 }
+
 func (c *ClientSettingsPacket) Read(r io.Reader) error {
 	var err error
 	if err = c.Lang.Read(r); err != nil {

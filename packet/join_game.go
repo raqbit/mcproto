@@ -28,14 +28,6 @@ func (j *JoinGamePacket) ID() int32 {
 	return JoinGamePacketID
 }
 
-func (j *JoinGamePacket) Direction() Direction {
-	return ClientBound
-}
-
-func (j *JoinGamePacket) State() game.ConnectionState {
-	return game.PlayState
-}
-
 func (*JoinGamePacket) String() string {
 	return "JoinGame"
 }

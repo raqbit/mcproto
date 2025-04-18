@@ -20,6 +20,7 @@ func (h *HandshakePacket) Write(w io.Writer) error {
 	}
 	return nil
 }
+
 func (h *HandshakePacket) Read(r io.Reader) error {
 	var err error
 	if err = h.ProtoVer.Read(r); err != nil {

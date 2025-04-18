@@ -29,6 +29,7 @@ func (p *PlayerPositionLookPacket) Write(w io.Writer) error {
 	}
 	return nil
 }
+
 func (p *PlayerPositionLookPacket) Read(r io.Reader) error {
 	var err error
 	if err = p.X.Read(r); err != nil {

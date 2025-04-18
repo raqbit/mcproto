@@ -1,7 +1,5 @@
 package mcproto
 
-import "github.com/Raqbit/mcproto/packet"
-
 //go:generate stringer -type=Side -output side_string.go -linecomment
 
 // Side is the side of a Minecraft connection
@@ -12,18 +10,18 @@ const (
 	ServerSide             // Server
 )
 
-func (s Side) ReadDirection() packet.Direction {
+func (s Side) readDirection() PacketDirection {
 	if s == ServerSide {
-		return packet.ServerBound
+		return serverBound
 	} else {
-		return packet.ClientBound
+		return clientBound
 	}
 }
 
-func (s Side) WriteDirection() packet.Direction {
+func (s Side) writeDirection() PacketDirection {
 	if s == ServerSide {
-		return packet.ClientBound
+		return clientBound
 	} else {
-		return packet.ServerBound
+		return serverBound
 	}
 }

@@ -5,45 +5,62 @@ import (
 	"errors"
 	"fmt"
 	enc "github.com/Raqbit/mcproto/encoding"
-	"github.com/Raqbit/mcproto/game"
-	"github.com/Raqbit/mcproto/packet"
 	"io"
 	"net"
 	"time"
 )
 
-var (
-	ErrConnectionState  = errors.New("connection has invalid state for packet type")
-	ErrDirection        = errors.New("packet being sent in wrong direction")
-	ErrLegacyServerPing = errors.New("not implemented: legacy server ping")
+const MaxPacketLength = 1048576
+const (
+	clientBound PacketDirection = iota
+	serverBound PacketDirection = iota
 )
 
-// Connection represents a connection
-// to a Minecraft server or client.
-type Connection interface {
-	ReadPacket() (packet.Packet, error)
-	WritePacket(packet.Packet) error
-	SetReadDeadline(time.Time) error
-	SetWriteDeadline(time.Time) error
-	Close() error
-	SetState(state game.ConnectionState)
-}
+var (
+	ErrInvalidPacketLength = errors.New("packet has a malformed length")
+	ErrLegacyServerPing    = errors.New("legacy server ping not supported")
+)
 
-type connection struct {
-	conn     net.Conn
-	state    game.ConnectionState
-	side     Side
-	packets  map[packet.Info]packet.Packet
-	writeBuf *bytes.Buffer
-	readBuf  *bytes.Buffer
-	logger   Logger
-}
+type (
+	// Packet is a packet with side-bound ID
+	Packet interface {
+		fmt.Stringer
+		enc.MinecraftEncodable
+		enc.MinecraftDecodable
 
-// ReadPacket reads a Minecraft protocol packet from the connection.
-// ReadPacket will also try to parse the contents of this packet and return
-// an error if the given packet ID is unknown or if the known packet format
-// did not decode correctly.
-func (c *connection) ReadPacket() (packet.Packet, error) {
+		ID() int32
+	}
+
+	// Connection represents a connection
+	// to a Minecraft server or client.
+	Connection interface {
+		Read() (Packet, error)
+		Write(Packet) error
+		SetReadDeadline(time.Time) error
+		SetWriteDeadline(time.Time) error
+		Close() error
+		SetState(state ConnectionState)
+	}
+
+	// packetKey uniquely identifies a packet
+	packetKey struct {
+		id        int32
+		direction PacketDirection
+		state     ConnectionState
+	}
+
+	connection struct {
+		conn     net.Conn
+		state    ConnectionState
+		side     Side
+		packets  map[packetKey]Packet
+		writeBuf *bytes.Buffer
+		readBuf  *bytes.Buffer
+		logger   Logger
+	}
+)
+
+func (c *connection) Read() (Packet, error) {
 	var err error
 
 	// Read packet length
@@ -58,8 +75,8 @@ func (c *connection) ReadPacket() (packet.Packet, error) {
 	}
 
 	// Catch invalid packet lengths
-	if length < 1 || length > packet.MaxPacketLength {
-		return nil, packet.ErrInvalidPacketLength
+	if length < 1 || length > MaxPacketLength {
+		return nil, ErrInvalidPacketLength
 	}
 
 	// Read complete packet into read buffer
@@ -74,7 +91,7 @@ func (c *connection) ReadPacket() (packet.Packet, error) {
 	}
 
 	// Lookup packet type
-	pkt, err := c.getPacketTypeByID(int32(pID))
+	pkt, err := c.packetTypeFromID(int32(pID))
 
 	if err != nil {
 		return nil, err
@@ -98,15 +115,7 @@ func (c *connection) ReadPacket() (packet.Packet, error) {
 // If the provided deadline expires before a packet could be written,
 // an error is returned. Providing a zero value for the deadline will
 // make the read not time out.
-func (c *connection) WritePacket(packetToWrite packet.Packet) error {
-	if packetToWrite.State() != c.state {
-		return ErrConnectionState
-	}
-
-	if packetToWrite.Direction() != c.side.WriteDirection() {
-		return ErrDirection
-	}
-
+func (c *connection) Write(packetToWrite Packet) error {
 	c.logger.Debugf("[Send] %s, %d: %s\n", c.state, packetToWrite.ID(), packetToWrite.String())
 
 	packetId := enc.VarInt(packetToWrite.ID())
@@ -156,7 +165,7 @@ func (c *connection) SetWriteDeadline(t time.Time) error {
 
 // SetState switches the protocol to a different state,
 // which changes the meaning of packet IDs.
-func (c *connection) SetState(state game.ConnectionState) {
+func (c *connection) SetState(state ConnectionState) {
 	c.state = state
 }
 
@@ -166,35 +175,31 @@ func (c *connection) Close() error {
 	return c.conn.Close()
 }
 
-func (c *connection) registerPacket(pkt packet.Packet) {
-	c.packets[packet.Info{
-		ID:              pkt.ID(),
-		ConnectionState: pkt.State(),
-		Direction:       pkt.Direction(),
-	}] = pkt
+func (c *connection) registerPacket(pkt Packet, dir PacketDirection, state ConnectionState) {
+	c.packets[packetKey{id: pkt.ID(), direction: dir, state: state}] = pkt
 }
 
 type UnknownPacketError struct {
 	id        int32
-	direction packet.Direction
-	state     game.ConnectionState
+	direction PacketDirection
+	state     ConnectionState
 }
 
 func (u UnknownPacketError) Error() string {
-	return fmt.Sprintf("unknown packet ID, direction: %s, state: %s, ID: %#x", u.direction, u.state, u.id)
+	return fmt.Sprintf("unknown packet id, direction: %s, state: %s, id: %#x", u.direction, u.state, u.id)
 }
 
-func (c *connection) getPacketTypeByID(id int32) (packet.Packet, error) {
-	p, ok := c.packets[packet.Info{
-		ID:              id,
-		Direction:       c.side.ReadDirection(),
-		ConnectionState: c.state,
+func (c *connection) packetTypeFromID(id int32) (Packet, error) {
+	p, ok := c.packets[packetKey{
+		id:        id,
+		direction: c.side.readDirection(),
+		state:     c.state,
 	}]
 
 	if !ok {
 		return nil, UnknownPacketError{
 			id:        id,
-			direction: c.side.WriteDirection(),
+			direction: c.side.writeDirection(),
 			state:     c.state,
 		}
 	}

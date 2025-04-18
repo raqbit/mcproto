@@ -14,6 +14,7 @@ func (c *ChatMessagePacket) Write(w io.Writer) error {
 	}
 	return nil
 }
+
 func (c *ChatMessagePacket) Read(r io.Reader) error {
 	var err error
 	if err = c.Message.Read(r); err != nil {

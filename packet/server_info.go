@@ -18,14 +18,6 @@ func (s *ServerInfoPacket) ID() int32 {
 	return ServerInfoPacketID
 }
 
-func (s *ServerInfoPacket) Direction() Direction {
-	return ClientBound
-}
-
-func (s *ServerInfoPacket) State() game.ConnectionState {
-	return game.StatusState
-}
-
 func (*ServerInfoPacket) String() string {
 	return "ServerInfo"
 }

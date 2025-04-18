@@ -11,6 +11,7 @@ func (l *LoginDisconnectPacket) Write(w io.Writer) error {
 	}
 	return nil
 }
+
 func (l *LoginDisconnectPacket) Read(r io.Reader) error {
 	var err error
 	if err = l.Reason.Read(r); err != nil {

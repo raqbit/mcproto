@@ -1,10 +1,5 @@
 package mcproto
 
-import (
-	"github.com/Raqbit/mcproto/game"
-	"github.com/Raqbit/mcproto/packet"
-)
-
 // Option is a configuration option for mcproto.
 type Option func(conn *connection)
 
@@ -16,14 +11,13 @@ func WithLogger(logger Logger) Option {
 	}
 }
 
-// WithPackets allows you to add custom
-// packets to mcproto's packet registry.
-// This will make mcproto automatically parse
-// the packet when it is received.
-func WithPackets(packets []packet.Packet) Option {
+// WithPackets allows you to add custom packets to mcproto's packet registry.
+// This will make mcproto automatically parse the packet when it is received.
+// Because Packet only specifies the ID, the direction and state should also be given
+func WithPackets(packets []Packet, direction PacketDirection, state ConnectionState) Option {
 	return func(conn *connection) {
 		for _, pkt := range packets {
-			conn.registerPacket(pkt)
+			conn.registerPacket(pkt, direction, state)
 		}
 	}
 }
@@ -36,7 +30,7 @@ func WithSide(side Side) Option {
 	}
 }
 
-func WithState(state game.ConnectionState) Option {
+func WithState(state ConnectionState) Option {
 	return func(conn *connection) {
 		conn.state = state
 	}
